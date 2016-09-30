@@ -826,6 +826,7 @@
         };
         mc = Object.freeze(mc);
         manager.startPeerConnection(mc);
+        return mc;
     }
 
 // data
@@ -1200,7 +1201,9 @@
             dc.provider.removeConnection(dc);
             dc.provider.socket.send('end', {id: dc.id}, dc.peer);
         };
+        dc = Object.freeze(dc);
         manager.startPeerConnection(dc);
+        return dc;
     }
 
 // peer
