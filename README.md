@@ -3,8 +3,8 @@ proficient
 
 A WebRTC client-side library.
 
-##API
-###utils
+## API
+### utils
 - utils.debug
 - utils.defaultConfig
 - utils.browser
@@ -24,7 +24,7 @@ A WebRTC client-side library.
 - utils.toUint8
 - utils.toBuffer
 
-###manager
+### manager
 - manager.iceCandidates
 - manager.parseSDP
 - manager.storeCandidate
@@ -37,7 +37,7 @@ A WebRTC client-side library.
 - manager.createPeerConnection
 - manager.startPeerConnection
 
-###mediaConnection
+### mediaConnection
 - mc.id
 - mc.constraints
 - mc.metadata
@@ -59,7 +59,7 @@ A WebRTC client-side library.
 - mc.getStats
 - mc.close
 
-###dataConnection
+### dataConnection
 - dc.id
 - dc.constraints
 - dc.label
@@ -79,7 +79,7 @@ A WebRTC client-side library.
 - dc.getStats
 - dc.close
 
-###getPeer
+### getPeer
 - pro.config
 - pro.connections
 - pro.options
