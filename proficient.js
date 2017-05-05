@@ -1235,7 +1235,7 @@
         };
         pro.audio = function () {
             return store.audio;
-        }:
+        };
         pro.getMedia = function (type) {
             var constraints = {
                     audio: false,
