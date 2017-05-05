@@ -629,15 +629,15 @@
                     if (connection.session === 'both') {
                         connection.constraints.mandatory.OfferToReceiveAudio = true;
                         connection.constraints.mandatory.OfferToReceiveVideo = true;
-                        stream = connection.provider.video;
+                        stream = connection.provider.video();
                     } else if (connection.session === 'audio') {
                         connection.constraints.mandatory.OfferToReceiveAudio = true;
                         connection.constraints.mandatory.OfferToReceiveVideo = false;
-                        stream = connection.provider.audio;
+                        stream = connection.provider.audio();
                     } else if (connection.session === 'video') {
                         connection.constraints.mandatory.OfferToReceiveAudio = false;
                         connection.constraints.mandatory.OfferToReceiveVideo = true;
-                        stream = connection.provider.video;
+                        stream = connection.provider.video();
                     }
                     connection.addLocalStream(stream);
                     manager.makeOffer(connection);
@@ -653,15 +653,15 @@
                     if (connection.session === 'both') {
                         connection.constraints.mandatory.OfferToReceiveAudio = true;
                         connection.constraints.mandatory.OfferToReceiveVideo = true;
-                        stream = connection.provider.video;
+                        stream = connection.provider.video();
                     } else if (connection.session === 'audio') {
                         connection.constraints.mandatory.OfferToReceiveAudio = true;
                         connection.constraints.mandatory.OfferToReceiveVideo = false;
-                        stream = connection.provider.audio;
+                        stream = connection.provider.audio();
                     } else if (connection.session === 'video') {
                         connection.constraints.mandatory.OfferToReceiveAudio = false;
                         connection.constraints.mandatory.OfferToReceiveVideo = true;
-                        stream = connection.provider.video;
+                        stream = connection.provider.video();
                     }
                     connection.addLocalStream(stream);
                     manager.handleSDP('offer', connection, options.sdp);
@@ -1230,6 +1230,12 @@
             store.open = true;
             pro.emit('open');
         };
+        pro.video = function () {
+            return store.video;
+        };
+        pro.audio = function () {
+            return store.audio;
+        }:
         pro.getMedia = function (type) {
             var constraints = {
                     audio: false,
