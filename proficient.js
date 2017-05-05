@@ -688,7 +688,7 @@
         if (typeOf(options) !== 'object') {
             options = {};
         }
-        store.session = isString(options.session) ? options.session : 'both';
+        store.session = typeof options.session !== 'string' ? options.session : 'both';
         mc.id = options.id || 'mc_' + utils.uuid();
         mc.constraints = options.constraints || {
             optional: [],
@@ -1275,9 +1275,9 @@
         };
         pro.chat = function (peer, options) {
             var connection,
-                members = pro.socket.getMembers();
+                members = pro.socket.members();
 
-            if (!pro.open || typeof peer !== 'string' || members.indexOf(peer) === -1) {
+            if (!store.open || typeof peer !== 'string' || members.indexOf(peer) === -1) {
                 return;
             }
             options = typeOf(options) === 'object' ? options : {};
@@ -1288,9 +1288,9 @@
         };
         pro.call = function (peer, options) {
             var connection,
-                members = pro.socket.getMembers();
+                members = pro.socket.members();
 
-            if (!pro.open || typeof peer !== 'string' || members.indexOf(peer) === -1) {
+            if (!store.open || typeof peer !== 'string' || members.indexOf(peer) === -1) {
                 return;
             }
             options = typeOf(options) === 'object' ? options : {};
@@ -1415,7 +1415,7 @@
         pro.socket.on('end', pro.end.bind(pro), false);
         pro.socket.on('joined', pro.emit.bind(pro, 'joined'));
         pro.socket.on('left', pro.emit.bind(pro, 'left'));
-        if (pro.socket.open) {
+        if (pro.socket.open()) {
             pro.openConnection();
         }
         return Object.freeze(pro);
