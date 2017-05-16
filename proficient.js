@@ -1420,7 +1420,6 @@
             }
         };
         pro.gotCandidate = function (data, peer) {
-            console.log(data);
             var payload = JSON.parse(utils.getStringFromCodes(data)),
                 connection = pro.getConnection(peer, payload.id);
 
