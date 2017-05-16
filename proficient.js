@@ -1173,7 +1173,8 @@
                             if (filereader.readyState !== 2 || !result) {
                                 return;
                             }
-                            process(result);
+                            data = result;
+                            process();
                         };
                         filereader.readAsArrayBuffer(data.slice(start, end));
                         return;
@@ -1189,7 +1190,7 @@
                         if (type === 1) {
                             chunk.writeString(data.slice(start, end));
                         } else {
-                            chunk.writeBytes(data);
+                            chunk.writeBytes(data.slice(start, end));
                         }
                     } else {
                         chunk = {
