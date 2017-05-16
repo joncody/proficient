@@ -398,16 +398,16 @@
                     console.log('set local description, sending offer: ' + connection.id);
                     console.log(manager.parseSDP(offer));
                 }
-                connection.setLocalDescription = true;
-                connection.provider.socket.send('offer', {
+                connection.descriptions('local', true);
+                connection.provider.socket.send('offer', JSON.stringify({
                     type: connection.type,
                     id: connection.id,
                     label: connection.label,
-                    metadata: connection.metadata,
+                    metadata: connection.metadata(),
                     reliable: connection.reliable,
-                    session: connection.session,
+                    session: connection.session(),
                     sdp: offer
-                }, connection.peer);
+                }), connection.peer);
                 manager.releaseCandidates(connection);
             }
             function localDescriptionError(err) {
@@ -416,18 +416,18 @@
             if (utils.debug) {
                 console.log('created offer: ' + connection.id);
             }
-            connection.getPc().setLocalDescription(offer, localDescriptionSuccess, localDescriptionError);
+            connection.pc().setLocalDescription(offer, localDescriptionSuccess, localDescriptionError);
         }
         function offerError(err) {
             connection.emit('error', err);
         }
-        if (!connection || !connection.getPc()) {
+        if (!connection || !connection.pc()) {
             return;
         }
         if (utils.debug) {
             console.log('creating offer: ' + connection.id);
         }
-        connection.getPc().createOffer(offerSuccess, offerError, connection.constraints);
+        connection.pc().createOffer(offerSuccess, offerError, connection.constraints);
     };
 
     manager.makeAnswer = function (connection) {
@@ -437,12 +437,12 @@
                     console.log('set local description, sending answer: ' + connection.id);
                     console.log(manager.parseSDP(answer));
                 }
-                connection.setLocalDescription = true;
-                connection.provider.socket.send('answer', {
+                connection.descriptions('local', true);
+                connection.provider.socket.send('answer', JSON.stringify({
                     type: connection.type,
                     id: connection.id,
                     sdp: answer
-                }, connection.peer);
+                }), connection.peer);
                 if (connection.type === 'media') {
                     connection.openConnection();
                 }
@@ -454,18 +454,18 @@
             if (utils.debug) {
                 console.log('created answer: ' + connection.id);
             }
-            connection.getPc().setLocalDescription(answer, localDescriptionSuccess, localDescriptionError);
+            connection.pc().setLocalDescription(answer, localDescriptionSuccess, localDescriptionError);
         }
         function answerError(err) {
             connection.emit('error', err);
         }
-        if (!connection || !connection.getPc()) {
+        if (!connection || !connection.pc()) {
             return;
         }
         if (utils.debug) {
             console.log('creating answer: ' + connection.id);
         }
-        connection.getPc().createAnswer(answerSuccess, answerError, connection.constraints);
+        connection.pc().createAnswer(answerSuccess, answerError, connection.constraints);
     };
 
     manager.handleSDP = function (type, connection, sdp) {
@@ -474,7 +474,7 @@
                 console.log('set remote description: ' + connection.id);
                 console.log(manager.parseSDP(sdp));
             }
-            connection.setRemoteDescription = true;
+            connection.descriptions('remote', true);
             if (type === 'offer') {
                 manager.makeAnswer(connection);
             } else if (connection.type === 'media') {
@@ -484,7 +484,7 @@
         function remoteDescriptionError(err) {
             connection.emit('error', err);
         }
-        if (!connection || !connection.getPc() || !sdp) {
+        if (!connection || !connection.pc() || !sdp) {
             return;
         }
         if (utils.debug) {
@@ -492,7 +492,7 @@
             console.log(manager.parseSDP(sdp));
         }
         sdp = new RTCSessionDescription(sdp);
-        connection.getPc().setRemoteDescription(sdp, remoteDescriptionSuccess, remoteDescriptionError);
+        connection.pc().setRemoteDescription(sdp, remoteDescriptionSuccess, remoteDescriptionError);
     };
 
     manager.handleCandidate = function (connection, ice) {
@@ -507,7 +507,7 @@
         if (utils.debug) {
             console.log('adding ICE candidate: ' + connection.id);
         }
-        connection.getPc().addIceCandidate(new RTCIceCandidate({
+        connection.pc().addIceCandidate(new RTCIceCandidate({
             sdpMLineIndex: sdpMLineIndex,
             candidate: candidate
         }));
@@ -614,29 +614,41 @@
         if (!pc) {
             return;
         }
-        connection.setPc(pc);
+        connection.pc(pc);
         if (options.originator) {
             if (type === 'data') {
                 dataChannel = pc.createDataChannel(connection.label, {reliable: connection.reliable});
                 if (dataChannel) {
                     connection.initialize(dataChannel);
                 }
-                connection.setStart(manager.makeOffer.bind(manager, connection));
+                connection.start(manager.makeOffer.bind(manager, connection));
             } else if (type === 'media') {
-                connection.setStart(function start() {
+                connection.start(function () {
                     var stream;
 
-                    if (connection.session === 'both') {
-                        connection.constraints.mandatory.OfferToReceiveAudio = true;
-                        connection.constraints.mandatory.OfferToReceiveVideo = true;
+                    if (connection.session() === 'both') {
+                        connection.constraints({
+                            mandatory: {
+                                offerToReceiveAudio: true,
+                                offerToReceiveVideo: true
+                            }
+                        });
                         stream = connection.provider.video();
-                    } else if (connection.session === 'audio') {
-                        connection.constraints.mandatory.OfferToReceiveAudio = true;
-                        connection.constraints.mandatory.OfferToReceiveVideo = false;
+                    } else if (connection.session() === 'audio') {
+                        connection.constraints({
+                            mandatory: {
+                                offerToReceiveAudio: true,
+                                offerToReceiveVideo: false
+                            }
+                        });
                         stream = connection.provider.audio();
-                    } else if (connection.session === 'video') {
-                        connection.constraints.mandatory.OfferToReceiveAudio = false;
-                        connection.constraints.mandatory.OfferToReceiveVideo = true;
+                    } else if (connection.session() === 'video') {
+                        connection.constraints({
+                            mandatory: {
+                                offerToReceiveAudio: false,
+                                offerToReceiveVideo: true
+                            }
+                        });
                         stream = connection.provider.video();
                     }
                     connection.addLocalStream(stream);
@@ -645,22 +657,34 @@
             }
         } else if (options.sdp) {
             if (type === 'data') {
-                connection.setAnswer(manager.handleSDP.bind(manager, 'offer', connection, options.sdp));
+                connection.answer(manager.handleSDP.bind(manager, 'offer', connection, options.sdp));
             } else if (type === 'media') {
-                connection.setAnswer(function answer() {
+                connection.answer(function () {
                     var stream;
 
-                    if (connection.session === 'both') {
-                        connection.constraints.mandatory.OfferToReceiveAudio = true;
-                        connection.constraints.mandatory.OfferToReceiveVideo = true;
+                    if (connection.session() === 'both') {
+                        connection.constraints({
+                            mandatory: {
+                                offerToReceiveAudio: true,
+                                offerToReceiveVideo: true
+                            }
+                        });
                         stream = connection.provider.video();
-                    } else if (connection.session === 'audio') {
-                        connection.constraints.mandatory.OfferToReceiveAudio = true;
-                        connection.constraints.mandatory.OfferToReceiveVideo = false;
+                    } else if (connection.session() === 'audio') {
+                        connection.constraints({
+                            mandatory: {
+                                offerToReceiveAudio: true,
+                                offerToReceiveVideo: false
+                            }
+                        });
                         stream = connection.provider.audio();
-                    } else if (connection.session === 'video') {
-                        connection.constraints.mandatory.OfferToReceiveAudio = false;
-                        connection.constraints.mandatory.OfferToReceiveVideo = true;
+                    } else if (connection.session() === 'video') {
+                        connection.constraints({
+                            mandatory: {
+                                offerToReceiveAudio: false,
+                                offerToReceiveVideo: true
+                            }
+                        });
                         stream = connection.provider.video();
                     }
                     connection.addLocalStream(stream);
@@ -674,6 +698,12 @@
     function mediaConnection(provider, peer, options) {
         var mc = emitter(),
             store = {
+                session: options.session || 'both',
+                constraints: options.constraints || {
+                    optional: [],
+                    mandatory: {}
+                },
+                metadata: options.metadata || '',
                 open: false,
                 remoteStream: null,
                 setLocalDescription: false,
@@ -688,13 +718,7 @@
         if (typeOf(options) !== 'object') {
             options = {};
         }
-        store.session = typeof options.session !== 'string' ? options.session : 'both';
         mc.id = options.id || 'mc_' + utils.uuid();
-        mc.constraints = options.constraints || {
-            optional: [],
-            mandatory: {}
-        };
-        mc.metadata = options.metadata || '';
         mc.options = options;
         mc.peer = peer;
         mc.provider = provider;
@@ -702,28 +726,53 @@
         mc.on('error', function (err) {
             console.log(err);
         });
-        mc.setStart = function (start) {
-            if (typeof start === 'function') {
-                store.start = start;
+        mc.metadata = function (metadata) {
+            if (metadata) {
+                store.metadata = metadata;
+            }
+            return store.metadata;
+        };
+        mc.session = function (session) {
+            if (typeof session === 'string') {
+                store.session = session;
+            }
+            return store.session;
+        };
+        mc.descriptions = function (type, set) {
+            if (type === 'local') {
+                if (typeof set === 'boolean') {
+                    store.setLocalDescription = set;
+                }
+                return store.setLocalDescription;
+            } else if (type === 'remote') {
+                if (typeof set === 'boolean') {
+                    store.setRemoteDescription = set;
+                }
+                return store.setRemoteDescription;
             }
         };
-        mc.start = function () {
+        mc.constraints = function (constraints) {
+            if (typeof constraints === 'object') {
+                store.contsraints = constraints;
+            }
+            return store.constraints;
+        };
+        mc.start = function (start) {
+            if (typeof start === 'function') {
+                return store.start = start;
+            }
             store.start();
         };
-        mc.setAnswer = function (answer) {
+        mc.answer = function (answer) {
             if (typeof answer === 'function') {
-                store.answer = answer;
+                return store.answer = answer;
             }
-        };
-        mc.answer = function () {
             store.answer();
         };
-        mc.setPc = function (pc) {
+        mc.pc = function (pc) {
             if (pc) {
                 store.pc = pc;
             }
-        };
-        mc.getPc = function (pc) {
             return store.pc;
         };
         mc.openConnection = function () {
@@ -820,7 +869,7 @@
                 store.pc = null;
             }
             store.open = false;
-            store.emit('close');
+            mc.emit('close');
             mc.provider.removeConnection(mc);
             mc.provider.socket.send('end', {id: mc.id}, mc.peer);
         };
@@ -833,6 +882,14 @@
     function dataConnection(provider, peer, options) {
         var dc = emitter(),
             store = {
+                constraints: options.contstraints || {
+                    optional: [],
+                    mandatory: {
+                        offerToReceiveVideo: false,
+                        offerToReceiveAudio: false
+                    }
+                },
+                metadata: options.metadata || '',
                 open: false,
                 buffer: {},
                 queue: [],
@@ -853,15 +910,7 @@
             options = {};
         }
         dc.id = options.id || 'dc_' + utils.uuid();
-        dc.constraints = options.constraints || {
-            optional: [],
-            mandatory: {
-                OfferToReceiveVideo: false,
-                OfferToReceiveAudio: false
-            }
-        };
         dc.label = options.label || dc.id;
-        dc.metadata = options.metadata || '';
         dc.peer = peer;
         dc.provider = provider;
         dc.reliable = options.reliable || utils.supports.sctp;
@@ -869,6 +918,31 @@
         dc.on('error', function (err) {
             console.log(err);
         });
+        dc.metadata = function (metadata) {
+            if (metadata) {
+                store.metadata = metadata;
+            }
+            return store.metadata;
+        };
+        dc.descriptions = function (type, set) {
+            if (type === 'local') {
+                if (typeof set === 'boolean') {
+                    store.setLocalDescription = set;
+                }
+                return store.setLocalDescription;
+            } else if (type === 'remote') {
+                if (typeof set === 'boolean') {
+                    store.setRemoteDescription = set;
+                }
+                return store.setRemoteDescription;
+            }
+        };
+        dc.constraints = function (constraints) {
+            if (typeof constraints === 'object') {
+                store.contsraints = constraints;
+            }
+            return store.constraints;
+        };
         dc.initialize = function (dataChannel) {
             if (!dataChannel) {
                 return;
@@ -1184,7 +1258,7 @@
             }
         };
         dc.close = function () {
-            var pc = dc.getPc();
+            var pc = dc.pc();
 
             if (!store.open) {
                 return;
@@ -1210,6 +1284,7 @@
     function getPeer(user, room, options) {
         var pro = emitter(),
             store = {
+                connections: {},
                 open: false,
                 audio: null,
                 video: null
@@ -1222,7 +1297,6 @@
             options = {};
         }
         pro.config = options.config || utils.defaultConfig;
-        pro.connections = {};
         pro.options = options;
         pro.user = user;
         pro.socket = rtgo.socket.join(room);
@@ -1230,10 +1304,16 @@
             store.open = true;
             pro.emit('open');
         };
-        pro.video = function () {
+        pro.video = function (stream) {
+            if (stream) {
+                store.video = stream;
+            }
             return store.video;
         };
-        pro.audio = function () {
+        pro.audio = function (stream) {
+            if (stream) {
+                store.audio = stream;
+            }
             return store.audio;
         };
         pro.getMedia = function (type) {
@@ -1247,7 +1327,7 @@
                     store.video = stream;
                 } else if (type === 'audio') {
                     store.audio = stream;
-                } else if (type === 'both') {
+                } else {
                     store.video = stream;
                     store.audio = stream;
                 }
@@ -1273,7 +1353,7 @@
 
             if (type === 'audio' || type === 'video') {
                 constraints[type] = true;
-            } else if (type === 'both') {
+            } else {
                 constraints.audio = true;
                 constraints.video = true;
             }
@@ -1306,10 +1386,10 @@
             return connection;
         };
         pro.getConnection = function (peer, id) {
-            if (typeof peer !== 'string' || typeof id !== 'string' || !pro.connections.hasOwnProperty(peer)) {
+            if (typeof peer !== 'string' || typeof id !== 'string' || !store.connections.hasOwnProperty(peer)) {
                 return;
             }
-            return pro.connections[peer][id];
+            return store.connections[peer][id];
         };
         pro.addConnection = function (connection) {
             var peer,
@@ -1320,10 +1400,10 @@
             }
             peer = connection.peer;
             id = connection.id;
-            if (!pro.connections.hasOwnProperty(peer)) {
-                pro.connections[peer] = {};
+            if (!store.connections.hasOwnProperty(peer)) {
+                store.connections[peer] = {};
             }
-            pro.connections[peer][id] = connection;
+            store.connections[peer][id] = connection;
         };
         pro.removeConnection = function (connection) {
             var id,
@@ -1334,19 +1414,20 @@
             }
             peer = connection.peer;
             id = connection.id;
-            if (pro.connections.hasOwnProperty(peer) && pro.connections[peer].hasOwnProperty(id)) {
+            if (store.connections.hasOwnProperty(peer) && store.connections[peer].hasOwnProperty(id)) {
                 connection.close();
-                delete pro.connections[peer][id];
+                delete store.connections[peer][id];
             }
         };
         pro.gotCandidate = function (data, peer) {
+            console.log(data);
             var payload = JSON.parse(utils.getStringFromCodes(data)),
                 connection = pro.getConnection(peer, payload.id);
 
             if (!connection || !payload.candidate) {
                 return;
             }
-            if (!connection.setLocalDescription) {
+            if (!connection.setLocalDescription()) {
                 manager.storeCandidate(connection, payload.candidate);
             } else {
                 manager.handleCandidate(connection, payload.candidate);
@@ -1386,16 +1467,16 @@
             }
         };
         pro.cleanupPeer = function (peer) {
-            if (typeof peer !== 'string' || !pro.connections.hasOwnProperty(peer)) {
+            if (typeof peer !== 'string' || !store.connections.hasOwnProperty(peer)) {
                 return;
             }
-            Object.keys(pro.connections[peer]).forEach(function (id) {
-                pro.connections[peer][id].close();
-                delete pro.connections[peer][id];
+            Object.keys(store.connections[peer]).forEach(function (id) {
+                store.connections[peer][id].close();
+                delete store.connections[peer][id];
             }, pro);
         };
         pro.cleanup = function () {
-            Object.keys(pro.connections).forEach(function (peer) {
+            Object.keys(store.connections).forEach(function (peer) {
                 pro.cleanupPeer(peer);
             }, pro);
         };
