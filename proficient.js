@@ -1112,12 +1112,14 @@
                 return;
             }
             if (chunk.betterview === true) {
+                chunk.seek(0);
                 info.type = chunk.getUint8();
                 info.id = chunk.getUint32();
                 info.count = chunk.getUint32();
                 info.total = chunk.getUint32();
                 info.metadata = utils.parse(chunk.getString(chunk.getUint32()));
-                data = chunk.buffer;
+                chunk.seek(0);
+                data = chunk.getBytes();
             } else if (typeOf(chunk) === 'object') {
                 info.type = chunk.type;
                 info.id = chunk.id;
