@@ -698,12 +698,6 @@
     function mediaConnection(provider, peer, options) {
         var mc = emitter(),
             store = {
-                session: options.session || 'both',
-                constraints: options.constraints || {
-                    optional: [],
-                    mandatory: {}
-                },
-                metadata: options.metadata || '',
                 open: false,
                 remoteStream: null,
                 setLocalDescription: false,
@@ -718,8 +712,14 @@
         if (typeOf(options) !== 'object') {
             options = {};
         }
-        mc.id = options.id || 'mc_' + utils.uuid();
         mc.options = options;
+        store.session = options.session || 'both';
+        store.constraints =  options.constraints || {
+            optional: [],
+            mandatory: {}
+        };
+        store.metadata = options.metadata || '';
+        mc.id = options.id || 'mc_' + utils.uuid();
         mc.peer = peer;
         mc.provider = provider;
         mc.type = 'media';
@@ -882,14 +882,6 @@
     function dataConnection(provider, peer, options) {
         var dc = emitter(),
             store = {
-                constraints: options.contstraints || {
-                    optional: [],
-                    mandatory: {
-                        offerToReceiveVideo: false,
-                        offerToReceiveAudio: false
-                    }
-                },
-                metadata: options.metadata || '',
                 open: false,
                 buffer: {},
                 queue: [],
@@ -900,7 +892,9 @@
                 setLocalDescription: false,
                 lastPacketSent: null,
                 lastPacketReceived: null,
-                dataChannel: null
+                dataChannel: null,
+                start: function () {},
+                answer: function () {}
             };
 
         if (!provider || !peer || typeof peer !== 'string') {
@@ -909,6 +903,16 @@
         if (typeOf(options) !== 'object') {
             options = {};
         }
+        dc.options = options;
+        store.session = 'none';
+        store.constraints = options.constraints || {
+            optional: [],
+            mandatory: {
+                offerToReceiveVideo: false,
+                offerToReceiveAudio: false
+            }
+        };
+        store.metadata = options.metadata || '';
         dc.id = options.id || 'dc_' + utils.uuid();
         dc.label = options.label || dc.id;
         dc.peer = peer;
@@ -923,6 +927,12 @@
                 store.metadata = metadata;
             }
             return store.metadata;
+        };
+        dc.session = function (session) {
+            if (typeof session === 'string') {
+                store.session = session;
+            }
+            return store.session;
         };
         dc.descriptions = function (type, set) {
             if (type === 'local') {
@@ -942,6 +952,24 @@
                 store.contsraints = constraints;
             }
             return store.constraints;
+        };
+        dc.start = function (start) {
+            if (typeof start === 'function') {
+                return store.start = start;
+            }
+            store.start();
+        };
+        dc.answer = function (answer) {
+            if (typeof answer === 'function') {
+                return store.answer = answer;
+            }
+            store.answer();
+        };
+        dc.pc = function (pc) {
+            if (pc) {
+                store.pc = pc;
+            }
+            return store.pc;
         };
         dc.initialize = function (dataChannel) {
             if (!dataChannel) {
@@ -1133,7 +1161,7 @@
                     id = gid(),
                     chunk;
 
-                function process(data) {
+                function process() {
                     var filereader = new FileReader();
 
                     if (data instanceof Blob) {
