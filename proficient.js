@@ -524,11 +524,11 @@
             if (utils.debug) {
                 console.log('sending ice candidate: ' + connection.id);
             }
-            connection.provider.socket.send('candidate', {
+            connection.provider.socket.send('candidate', JSON.stringify({
                 type: connection.type,
                 id: connection.id,
                 candidate: evt.candidate
-            }, connection.peer);
+            }), connection.peer);
         };
         pc.oniceconnectionstatechange = function () {
             var state = pc.iceConnectionState,
@@ -871,7 +871,7 @@
             store.open = false;
             mc.emit('close');
             mc.provider.removeConnection(mc);
-            mc.provider.socket.send('end', {id: mc.id}, mc.peer);
+            mc.provider.socket.send('end', JSON.stringify({id: mc.id}), mc.peer);
         };
         mc = Object.freeze(mc);
         manager.startPeerConnection(mc);
@@ -1273,7 +1273,7 @@
             store.open = false;
             dc.emit('close');
             dc.provider.removeConnection(dc);
-            dc.provider.socket.send('end', {id: dc.id}, dc.peer);
+            dc.provider.socket.send('end', JSON.stringify({id: dc.id}), dc.peer);
         };
         dc = Object.freeze(dc);
         manager.startPeerConnection(dc);
@@ -1426,7 +1426,7 @@
             if (!connection || !payload.candidate) {
                 return;
             }
-            if (!connection.setLocalDescription()) {
+            if (!connection.descriptions('local')) {
                 manager.storeCandidate(connection, payload.candidate);
             } else {
                 manager.handleCandidate(connection, payload.candidate);
