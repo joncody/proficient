@@ -802,7 +802,7 @@
             mc.emit("stream", stream);
         };
         mc.toggleRemoteMedia = function (type) {
-            var tracks;
+            var tracks = [];
             var stream = store.remoteStream;
 
             if (!stream) {
@@ -813,8 +813,7 @@
             } else if (type === "video") {
                 tracks = stream.getVideoTracks();
             } else if (type === "both") {
-                tracks = stream.getAudioTracks();
-                tracks.concat(stream.getVideoTracks());
+                tracks = tracks.concat(stream.getAudioTracks(), stream.getVideoTracks());
             }
             tracks.forEach(function (track) {
                 if (track) {
@@ -823,10 +822,10 @@
             });
         };
         mc.toggleLocalMedia = function (type) {
-            var tracks;
+            var tracks = [];
             var stream = type === "audio"
-                ? mc.provider.audio
-                : mc.provider.video;
+                ? mc.provider.audio()
+                : mc.provider.video();
 
             if (!stream) {
                 return;
@@ -836,8 +835,7 @@
             } else if (type === "video") {
                 tracks = stream.getVideoTracks();
             } else if (type === "both") {
-                tracks = stream.getAudioTracks();
-                tracks.concat(stream.getVideoTracks());
+                tracks = tracks.concat(stream.getAudioTracks(), stream.getVideoTracks());
             }
             tracks.forEach(function (track) {
                 if (track) {
@@ -1039,7 +1037,7 @@
                 store.buffer[id] = [];
             }
             chunks = store.buffer[id];
-            chunks.push(payload);
+            chunks[count] = payload;
             store.lastPacketReceived = data;
             dc.emit("chunk-received", {
                 type: type,
@@ -1195,10 +1193,9 @@
                             if (filereader.readyState !== 2 || !result) {
                                 return;
                             }
-                            data = result;
-                            process();
+                            sendMessage(result, metadata);
                         };
-                        filereader.readAsArrayBuffer(data.slice(start, end));
+                        filereader.readAsArrayBuffer(data);
                         return;
                     }
                     if (utils.supports.sctp) {
@@ -1227,7 +1224,7 @@
                     if (store.outgoingBlacklist.indexOf(id) !== -1) {
                         return;
                     }
-                    store.queue.push(chunk);
+                    store.queue[count] = chunk;
                     start = end;
                     count += 1;
                     if (end < size) {
@@ -1254,7 +1251,6 @@
                 }
                 if (data instanceof File) {
                     metadata = {
-                        data: metadata,
                         name: data.name,
                         type: data.type
                     };
