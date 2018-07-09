@@ -5560,6 +5560,8 @@ module.exports = {
         "var",
         "video"
     ];
+    var keyboardHandler;
+    var mouseHandler;
 
     function typeOf(value) {
         var type = typeof value;
@@ -5887,6 +5889,19 @@ module.exports = {
             : document.querySelectorAll(supplant(selector, object));
     }
 
+    function getStyle(node, pseudo) {
+        return global.getComputedStyle(node, isUndefined(pseudo)
+            ? false
+            : pseudo);
+    }
+
+    function setImmediate(fn) {
+        if (!isFunction(fn)) {
+            return;
+        }
+        return global.setTimeout(fn, 0);
+    }
+
     function gg(mselector, object) {
         var gobject = {
             gg: true
@@ -6121,9 +6136,6 @@ module.exports = {
                         ? values[0]
                         : values;
             } else if (propname) {
-                value = isNumber(value)
-                    ? value + "px"
-                    : value;
                 each(store, function (node) {
                     node.style[propname] = value;
                 });
@@ -6414,7 +6426,9 @@ module.exports = {
         gobject.remove = function (item) {
             if (isUndefined(item)) {
                 each(store, function (node) {
-                    node.parentNode.removeChild(node);
+                    if (node.parentNode) {
+                        node.parentNode.removeChild(node);
+                    }
                 });
             } else {
                 each(store, function (node) {
@@ -6422,7 +6436,9 @@ module.exports = {
                         if (!isNode(child) || !node.contains(child)) {
                             return;
                         }
-                        node.removeChild(child);
+                        if (child.parentNode) {
+                            node.removeChild(child);
+                        }
                     });
                 });
             }
@@ -6480,20 +6496,6 @@ module.exports = {
                     : node.cloneNode(deep));
             });
             return gg(nodes);
-        };
-
-        gobject.hide = function () {
-            each(store, function (node) {
-                node.style.display = "none";
-            });
-            return gobject;
-        };
-
-        gobject.unhide = function () {
-            each(store, function (node) {
-                node.style.display = "";
-            });
-            return gobject;
         };
 
         gobject.create = function (tag) {
@@ -6587,7 +6589,7 @@ module.exports = {
         return Object.freeze(gobject);
     }
 
-    var keyboardHandler = (function () {
+    keyboardHandler = (function () {
         function keyDown(options, handlers) {
             return function (e) {
                 var keycode = e.keyCode;
@@ -6624,7 +6626,7 @@ module.exports = {
         });
     }
 
-    var mouseHandler = (function () {
+    mouseHandler = (function () {
         function mouseDown(options, handlers) {
             return function (e) {
                 var keycode = e.button;
@@ -6705,6 +6707,8 @@ module.exports = {
     gg.getbyid = getbyid;
     gg.select = select;
     gg.selectAll = selectAll;
+    gg.getStyle = getStyle;
+    gg.setImmediate = setImmediate;
     gg.keyboardHandler = keyboardHandler;
     gg.removeKeyboardHandlers = removeKeyboardHandlers;
     gg.mouseHandler = mouseHandler;
@@ -7122,18 +7126,22 @@ module.exports = {
         };
         pro.remConn = function (conn) {
             if (!store.connections.hasOwnProperty(conn.peer)) {
+                console.log("remConn: no peer found");
                 return;
             }
             if (!store.connections[conn.peer].hasOwnProperty(conn.id)) {
+                console.log("remConn: no id found");
                 return;
             }
             delete store.connections[conn.peer][conn.id];
         };
         pro.getConn = function (peer, id) {
             if (!store.connections.hasOwnProperty(peer)) {
+                console.log("gotConn: no peer found");
                 return;
             }
             if (!store.connections[peer].hasOwnProperty(id)) {
+                console.log("gotConn: no id found");
                 return;
             }
             return store.connections[peer][id];
@@ -7143,6 +7151,7 @@ module.exports = {
             var conn = pro.getConn(peer, jsonmsg.id);
 
             if (!conn) {
+                console.log("gotCandidate: no conn found");
                 return;
             }
             conn.pc.addIceCandidate(jsonmsg.candidate).then(function () {
@@ -7156,6 +7165,7 @@ module.exports = {
             var conn = pro.getConn(peer, jsonmsg.id);
 
             if (!conn) {
+                console.log("gotAnswer: no conn found");
                 return;
             }
             conn.pc.setRemoteDescription(jsonmsg.sdp).then(function () {
@@ -7169,6 +7179,7 @@ module.exports = {
             var conn = pro.getConn(peer, jsonmsg.id);
 
             if (conn) {
+                console.log("gotOffer: conn already exists");
                 return;
             }
             conn = jsonmsg.type === "data"

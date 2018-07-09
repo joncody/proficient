@@ -129,6 +129,8 @@
         "var",
         "video"
     ];
+    var keyboardHandler;
+    var mouseHandler;
 
     function typeOf(value) {
         var type = typeof value;
@@ -456,6 +458,19 @@
             : document.querySelectorAll(supplant(selector, object));
     }
 
+    function getStyle(node, pseudo) {
+        return global.getComputedStyle(node, isUndefined(pseudo)
+            ? false
+            : pseudo);
+    }
+
+    function setImmediate(fn) {
+        if (!isFunction(fn)) {
+            return;
+        }
+        return global.setTimeout(fn, 0);
+    }
+
     function gg(mselector, object) {
         var gobject = {
             gg: true
@@ -690,9 +705,6 @@
                         ? values[0]
                         : values;
             } else if (propname) {
-                value = isNumber(value)
-                    ? value + "px"
-                    : value;
                 each(store, function (node) {
                     node.style[propname] = value;
                 });
@@ -983,7 +995,9 @@
         gobject.remove = function (item) {
             if (isUndefined(item)) {
                 each(store, function (node) {
-                    node.parentNode.removeChild(node);
+                    if (node.parentNode) {
+                        node.parentNode.removeChild(node);
+                    }
                 });
             } else {
                 each(store, function (node) {
@@ -991,7 +1005,9 @@
                         if (!isNode(child) || !node.contains(child)) {
                             return;
                         }
-                        node.removeChild(child);
+                        if (child.parentNode) {
+                            node.removeChild(child);
+                        }
                     });
                 });
             }
@@ -1049,20 +1065,6 @@
                     : node.cloneNode(deep));
             });
             return gg(nodes);
-        };
-
-        gobject.hide = function () {
-            each(store, function (node) {
-                node.style.display = "none";
-            });
-            return gobject;
-        };
-
-        gobject.unhide = function () {
-            each(store, function (node) {
-                node.style.display = "";
-            });
-            return gobject;
         };
 
         gobject.create = function (tag) {
@@ -1156,7 +1158,7 @@
         return Object.freeze(gobject);
     }
 
-    var keyboardHandler = (function () {
+    keyboardHandler = (function () {
         function keyDown(options, handlers) {
             return function (e) {
                 var keycode = e.keyCode;
@@ -1193,7 +1195,7 @@
         });
     }
 
-    var mouseHandler = (function () {
+    mouseHandler = (function () {
         function mouseDown(options, handlers) {
             return function (e) {
                 var keycode = e.button;
@@ -1274,6 +1276,8 @@
     gg.getbyid = getbyid;
     gg.select = select;
     gg.selectAll = selectAll;
+    gg.getStyle = getStyle;
+    gg.setImmediate = setImmediate;
     gg.keyboardHandler = keyboardHandler;
     gg.removeKeyboardHandlers = removeKeyboardHandlers;
     gg.mouseHandler = mouseHandler;
