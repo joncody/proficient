@@ -6921,7 +6921,7 @@ module.exports = {
             }());
             if (mc.initiator === true) {
                 mc.start = function () {
-                    pc.createOffer().then(function (offer) {
+                    pc.createOffer({ offerToReceiveAudio: 0, offerToReceiveVideo: 1 }).then(function (offer) {
                         return pc.setLocalDescription(offer);
                     }).then(function () {
                         mc.emit("local-description");
@@ -6941,7 +6941,7 @@ module.exports = {
                         mc.video(e.transceiver).direction = "sendrecv";
                         mc.video().sender.replaceTrack(stream.getVideoTracks()[0]);
                     }
-                    mc.emit("track");
+                    mc.emit("track", e, e.kind, e.track, e.streams);
                 };
                 mc.answer = function () {
                     pc.setRemoteDescription(store.sdp).then(function () {
@@ -7126,22 +7126,18 @@ module.exports = {
         };
         pro.remConn = function (conn) {
             if (!store.connections.hasOwnProperty(conn.peer)) {
-                console.log("remConn: no peer found");
                 return;
             }
             if (!store.connections[conn.peer].hasOwnProperty(conn.id)) {
-                console.log("remConn: no id found");
                 return;
             }
             delete store.connections[conn.peer][conn.id];
         };
         pro.getConn = function (peer, id) {
             if (!store.connections.hasOwnProperty(peer)) {
-                console.log("gotConn: no peer found");
                 return;
             }
             if (!store.connections[peer].hasOwnProperty(id)) {
-                console.log("gotConn: no id found");
                 return;
             }
             return store.connections[peer][id];
@@ -7151,7 +7147,6 @@ module.exports = {
             var conn = pro.getConn(peer, jsonmsg.id);
 
             if (!conn) {
-                console.log("gotCandidate: no conn found");
                 return;
             }
             conn.pc.addIceCandidate(jsonmsg.candidate).then(function () {
@@ -7165,7 +7160,6 @@ module.exports = {
             var conn = pro.getConn(peer, jsonmsg.id);
 
             if (!conn) {
-                console.log("gotAnswer: no conn found");
                 return;
             }
             conn.pc.setRemoteDescription(jsonmsg.sdp).then(function () {
@@ -7179,12 +7173,12 @@ module.exports = {
             var conn = pro.getConn(peer, jsonmsg.id);
 
             if (conn) {
-                console.log("gotOffer: conn already exists");
                 return;
             }
             conn = jsonmsg.type === "data"
                 ? dataConn(pro, peer, jsonmsg)
                 : mediaConn(pro, peer, jsonmsg);
+            pro.addConn(conn);
             pro.emit(jsonmsg.type === "data"
                 ? "chat"
                 : "call", conn);

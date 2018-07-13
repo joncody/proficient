@@ -200,7 +200,7 @@
             }());
             if (mc.initiator === true) {
                 mc.start = function () {
-                    pc.createOffer().then(function (offer) {
+                    pc.createOffer({ offerToReceiveAudio: 0, offerToReceiveVideo: 1 }).then(function (offer) {
                         return pc.setLocalDescription(offer);
                     }).then(function () {
                         mc.emit("local-description");
@@ -220,7 +220,7 @@
                         mc.video(e.transceiver).direction = "sendrecv";
                         mc.video().sender.replaceTrack(stream.getVideoTracks()[0]);
                     }
-                    mc.emit("track");
+                    mc.emit("track", e, e.kind, e.track, e.streams);
                 };
                 mc.answer = function () {
                     pc.setRemoteDescription(store.sdp).then(function () {
@@ -457,6 +457,7 @@
             conn = jsonmsg.type === "data"
                 ? dataConn(pro, peer, jsonmsg)
                 : mediaConn(pro, peer, jsonmsg);
+            pro.addConn(conn);
             pro.emit(jsonmsg.type === "data"
                 ? "chat"
                 : "call", conn);
