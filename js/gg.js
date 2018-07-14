@@ -817,11 +817,15 @@
                 string.split(/\s/g).forEach(function (substring) {
                     var match = new RegExp("(?:^|\\s)" + substring + "(?:$|\\s)", "g");
 
-                    node.className = match.test(node.className)
-                        ? node.className
-                        : node.className
-                            ? node.className + " " + substring
-                            : substring;
+                    if (!isObject(node.className)) {
+                        node.className = match.test(node.className)
+                            ? node.className
+                            : node.className
+                                ? node.className + " " + substring
+                                : substring;
+                    } else {
+                        node.classList.add(substring);
+                    }
                 });
             });
             return gobject;
@@ -835,7 +839,11 @@
                 string.split(/\s/).forEach(function (substring) {
                     var match = new RegExp("(?:^|\\s)" + substring + "(?:$|\\s)", "g");
 
-                    node.className = node.className.replace(match, " ").trim();
+                    if (!isObject(node.className)) {
+                        node.className = node.className.replace(match, " ").trim();
+                    } else {
+                        node.classList.remove(substring);
+                    }
                 });
             });
             return gobject;
@@ -849,11 +857,15 @@
                 string.split(/\s/).forEach(function (substring) {
                     var match = new RegExp("(?:^|\\s)" + substring + "(?:$|\\s)", "g");
 
-                    node.className = match.test(node.className)
-                        ? node.className.replace(match, " ").trim()
-                        : node.className
-                            ? node.className + " " + substring
-                            : substring;
+                    if (!isObject(node.className)) {
+                        node.className = match.test(node.className)
+                            ? node.className.replace(match, " ").trim()
+                            : node.className
+                                ? node.className + " " + substring
+                                : substring;
+                    } else {
+                        node.classList.toggle(substring);
+                    }
                 });
             });
             return gobject;
@@ -869,7 +881,11 @@
                 values.push(string.split(/\s/g).every(function (substring) {
                     var match = new RegExp("(?:^|\\s)" + substring + "(?:$|\\s)", "g");
 
-                    return match.test(node.className);
+                    if (!isObject(node.className)) {
+                        return match.test(node.className);
+                    } else {
+                        return node.classList.contains(substring);
+                    }
                 }));
             });
             return values.length === 0
