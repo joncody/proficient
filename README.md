@@ -14,9 +14,9 @@ var instance = proficient(name, room);
 - **room**
 - **stream**
 - **getMedia**
-- **addConn**
-- **remConn**
-- **getConn**
+- **addConnection**
+- **remConnection**
+- **getConnection**
 - **gotCandidate**
 - **gotAnswer**
 - **gotOffer**

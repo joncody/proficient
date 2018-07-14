@@ -41,11 +41,11 @@
             return ids[peer][type];
         };
     }());
-    var getPC = function (conn) {
+    var getPC = function (connection) {
         var pc = new RTCPeerConnection(null);
 
         pc.onnegotiationneeded = function (e) {
-            conn.emit("negotiationneeded");
+            connection.emit("negotiationneeded");
         };
         pc.onicecandidate = function (e) {
             var candidate = e.candidate;
@@ -53,10 +53,10 @@
             if (!candidate) {
                 return;
             }
-            conn.emit("candidate", candidate, e);
+            connection.emit("candidate", e, candidate);
         };
         pc.onicecandidateerror = function (e) {
-            conn.emit("icecandidateerror", e);
+            connection.emit("icecandidateerror", e);
         };
         pc.onsignalingstatechange = function (e) {
             var state = pc.signalingState;
@@ -77,7 +77,7 @@
                 default:
                     break;
             }
-            conn.emit("signalingstatechange", state, e);
+            connection.emit("signalingstatechange", state, e);
         };
         pc.oniceconnectionstatechange = function (e) {
             var state = pc.iceConnectionState;
@@ -100,7 +100,7 @@
                 default:
                     break;
             }
-            conn.emit("iceconnectionstatechange", state, e);
+            connection.emit("iceconnectionstatechange", state, e);
         };
         pc.onicegatheringstatechange = function (e) {
             var state = pc.iceGatheringState;
@@ -115,7 +115,7 @@
                 default:
                     break;
             }
-            conn.emit("icegatheringstatechange", state, e);
+            connection.emit("icegatheringstatechange", state, e);
         };
         pc.onconnectionstatechange = function (e) {
             var state = pc.connectionState;
@@ -136,12 +136,12 @@
                 default:
                     break;
             }
-            conn.emit("connectionstatechange", state, e);
+            connection.emit("connectionstatechange", state, e);
         };
         return pc;
     };
 
-    function mediaConn(provider, peer, options) {
+    function mediaConnection(provider, peer, options) {
         var mc = emitter();
         var store = {
             sdp: null,
@@ -200,7 +200,7 @@
             }());
             if (mc.initiator === true) {
                 mc.start = function () {
-                    pc.createOffer({ offerToReceiveAudio: 0, offerToReceiveVideo: 1 }).then(function (offer) {
+                    pc.createOffer().then(function (offer) {
                         return pc.setLocalDescription(offer);
                     }).then(function () {
                         mc.emit("local-description");
@@ -220,7 +220,7 @@
                         mc.video(e.transceiver).direction = "sendrecv";
                         mc.video().sender.replaceTrack(stream.getVideoTracks()[0]);
                     }
-                    mc.emit("track", e, e.kind, e.track, e.streams);
+                    mc.emit("track", e, e.track, e.streams);
                 };
                 mc.answer = function () {
                     pc.setRemoteDescription(store.sdp).then(function () {
@@ -246,7 +246,7 @@
         return Object.freeze(mc);
     }
 
-    function dataConn(provider, peer, options) {
+    function dataConnection(provider, peer, options) {
         var dc = emitter();
         var store = {
             quiet: false,
@@ -295,9 +295,7 @@
                 dc.emit("open");
             };
             channel.onmessage = function (e) {
-                var data = JSON.parse(gg.getStringFromCodes(e.data));
-
-                dc.emit("message", data);
+                dc.emit("message", e.data);
             };
             channel.onclose = function () {
                 dc.emit("close");
@@ -330,6 +328,7 @@
                     }
                     dc.channel(channel);
                     dc.setup();
+                    dc.emit("channel", dc.channel());
                 };
                 dc.answer = function () {
                     pc.setRemoteDescription(store.sdp).then(function () {
@@ -397,82 +396,85 @@
             }
             navigator.mediaDevices.getUserMedia(constraints).then(success).catch(failure);
         };
-        pro.addConn = function (conn) {
-            if (!store.connections.hasOwnProperty(conn.peer)) {
-                store.connections[conn.peer] = {};
+        pro.addConnection = function (connection) {
+            if (!store.connections.hasOwnProperty(connection.peer)) {
+                store.connections[connection.peer] = {
+                    media: {},
+                    data: {}
+                };
             }
-            store.connections[conn.peer][conn.id] = conn;
+            store.connections[connection.peer][connection.type][connection.id] = connection;
         };
-        pro.remConn = function (conn) {
-            if (!store.connections.hasOwnProperty(conn.peer)) {
+        pro.remConnection = function (connection) {
+            if (!store.connections.hasOwnProperty(connection.peer)) {
                 return;
             }
-            if (!store.connections[conn.peer].hasOwnProperty(conn.id)) {
+            if (!store.connections[connection.peer][connection.type].hasOwnProperty(connection.id)) {
                 return;
             }
-            delete store.connections[conn.peer][conn.id];
+            delete store.connections[connection.peer][connection.type][connection.id];
         };
-        pro.getConn = function (peer, id) {
+        pro.getConnection = function (peer, type, id) {
             if (!store.connections.hasOwnProperty(peer)) {
                 return;
             }
-            if (!store.connections[peer].hasOwnProperty(id)) {
+            if (!store.connections[peer][type].hasOwnProperty(id)) {
                 return;
             }
-            return store.connections[peer][id];
+            return store.connections[peer][type][id];
         };
         pro.gotCandidate = function (peer, msg) {
             var jsonmsg = JSON.parse(msg);
-            var conn = pro.getConn(peer, jsonmsg.id);
+            var connection = pro.getConnection(peer, jsonmsg.type, jsonmsg.id);
 
-            if (!conn) {
+            if (!connection) {
                 return;
             }
-            conn.pc.addIceCandidate(jsonmsg.candidate).then(function () {
-                pro.emit("add-candidate", jsonmsg.candidate);
+            connection.pc.addIceCandidate(jsonmsg.candidate).then(function () {
+                connection.emit("add-candidate", jsonmsg.candidate);
             }).catch(function (err) {
-                pro.emit("error", err);
+                connection.emit("error", err);
             });
         };
         pro.gotAnswer = function (peer, msg) {
             var jsonmsg = JSON.parse(msg);
-            var conn = pro.getConn(peer, jsonmsg.id);
+            var connection = pro.getConnection(peer, jsonmsg.type, jsonmsg.id);
 
-            if (!conn) {
+            if (!connection) {
                 return;
             }
-            conn.pc.setRemoteDescription(jsonmsg.sdp).then(function () {
-                conn.emit("remote-description");
+            connection.pc.setRemoteDescription(jsonmsg.sdp).then(function () {
+                connection.emit("remote-description");
             }).catch(function (err) {
-                conn.emit("error", err);
+                connection.emit("error", err);
             });
         };
         pro.gotOffer = function (peer, msg) {
             var jsonmsg = JSON.parse(msg);
-            var conn = pro.getConn(peer, jsonmsg.id);
+            var connection = pro.getConnection(peer, jsonmsg.type, jsonmsg.id);
 
-            if (conn) {
+            if (connection) {
                 return;
             }
-            conn = jsonmsg.type === "data"
-                ? dataConn(pro, peer, jsonmsg)
-                : mediaConn(pro, peer, jsonmsg);
-            pro.addConn(conn);
+            connection = jsonmsg.type === "data"
+                ? dataConnection(pro, peer, jsonmsg)
+                : mediaConnection(pro, peer, jsonmsg);
+            pro.addConnection(connection);
             pro.emit(jsonmsg.type === "data"
                 ? "chat"
-                : "call", conn);
+                : "call", connection);
         };
         pro.chat = function (peer) {
-            var conn = dataConn(pro, peer, { initiator: true });
+            var connection = dataConnection(pro, peer, { initiator: true });
 
-            pro.addConn(conn);
-            return conn;
+            pro.addConnection(connection);
+            return connection;
         };
         pro.call = function (peer) {
-            var conn = mediaConn(pro, peer, { initiator: true });
+            var connection = mediaConnection(pro, peer, { initiator: true });
 
-            pro.addConn(conn);
-            return conn;
+            pro.addConnection(connection);
+            return connection;
         };
         return Object.freeze(pro);
     }
