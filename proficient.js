@@ -6333,11 +6333,15 @@ module.exports = {
                 string.split(/\s/g).forEach(function (substring) {
                     var match = new RegExp("(?:^|\\s)" + substring + "(?:$|\\s)", "g");
 
-                    node.className = match.test(node.className)
-                        ? node.className
-                        : node.className
-                            ? node.className + " " + substring
-                            : substring;
+                    if (!isObject(node.className)) {
+                        node.className = match.test(node.className)
+                            ? node.className
+                            : node.className
+                                ? node.className + " " + substring
+                                : substring;
+                    } else {
+                        node.classList.add(substring);
+                    }
                 });
             });
             return gobject;
@@ -6351,7 +6355,11 @@ module.exports = {
                 string.split(/\s/).forEach(function (substring) {
                     var match = new RegExp("(?:^|\\s)" + substring + "(?:$|\\s)", "g");
 
-                    node.className = node.className.replace(match, " ").trim();
+                    if (!isObject(node.className)) {
+                        node.className = node.className.replace(match, " ").trim();
+                    } else {
+                        node.classList.remove(substring);
+                    }
                 });
             });
             return gobject;
@@ -6365,11 +6373,15 @@ module.exports = {
                 string.split(/\s/).forEach(function (substring) {
                     var match = new RegExp("(?:^|\\s)" + substring + "(?:$|\\s)", "g");
 
-                    node.className = match.test(node.className)
-                        ? node.className.replace(match, " ").trim()
-                        : node.className
-                            ? node.className + " " + substring
-                            : substring;
+                    if (!isObject(node.className)) {
+                        node.className = match.test(node.className)
+                            ? node.className.replace(match, " ").trim()
+                            : node.className
+                                ? node.className + " " + substring
+                                : substring;
+                    } else {
+                        node.classList.toggle(substring);
+                    }
                 });
             });
             return gobject;
@@ -6385,7 +6397,11 @@ module.exports = {
                 values.push(string.split(/\s/g).every(function (substring) {
                     var match = new RegExp("(?:^|\\s)" + substring + "(?:$|\\s)", "g");
 
-                    return match.test(node.className);
+                    if (!isObject(node.className)) {
+                        return match.test(node.className);
+                    } else {
+                        return node.classList.contains(substring);
+                    }
                 }));
             });
             return values.length === 0
@@ -6847,11 +6863,11 @@ module.exports = {
             return ids[peer][type];
         };
     }());
-    var getPC = function (conn) {
+    var getPC = function (connection) {
         var pc = new RTCPeerConnection(null);
 
         pc.onnegotiationneeded = function (e) {
-            conn.emit("negotiationneeded");
+            connection.emit("negotiationneeded");
         };
         pc.onicecandidate = function (e) {
             var candidate = e.candidate;
@@ -6859,10 +6875,10 @@ module.exports = {
             if (!candidate) {
                 return;
             }
-            conn.emit("candidate", candidate, e);
+            connection.emit("candidate", e, candidate);
         };
         pc.onicecandidateerror = function (e) {
-            conn.emit("icecandidateerror", e);
+            connection.emit("icecandidateerror", e);
         };
         pc.onsignalingstatechange = function (e) {
             var state = pc.signalingState;
@@ -6883,7 +6899,7 @@ module.exports = {
                 default:
                     break;
             }
-            conn.emit("signalingstatechange", state, e);
+            connection.emit("signalingstatechange", state, e);
         };
         pc.oniceconnectionstatechange = function (e) {
             var state = pc.iceConnectionState;
@@ -6906,7 +6922,7 @@ module.exports = {
                 default:
                     break;
             }
-            conn.emit("iceconnectionstatechange", state, e);
+            connection.emit("iceconnectionstatechange", state, e);
         };
         pc.onicegatheringstatechange = function (e) {
             var state = pc.iceGatheringState;
@@ -6921,7 +6937,7 @@ module.exports = {
                 default:
                     break;
             }
-            conn.emit("icegatheringstatechange", state, e);
+            connection.emit("icegatheringstatechange", state, e);
         };
         pc.onconnectionstatechange = function (e) {
             var state = pc.connectionState;
@@ -6942,12 +6958,12 @@ module.exports = {
                 default:
                     break;
             }
-            conn.emit("connectionstatechange", state, e);
+            connection.emit("connectionstatechange", state, e);
         };
         return pc;
     };
 
-    function mediaConn(provider, peer, options) {
+    function mediaConnection(provider, peer, options) {
         var mc = emitter();
         var store = {
             sdp: null,
@@ -6983,30 +6999,40 @@ module.exports = {
             var stream = mc.provider.stream();
 
             mc.audio = (function () {
-                var audio = pc.addTransceiver("audio");
+                var audioSender = stream.getAudioTracks().length > 0
+                    ? pc.addTrack(stream.getAudioTracks()[0], stream)
+                    : null;
 
-                audio.sender.replaceTrack(stream.getAudioTracks()[0]);
-                return function (transceiver) {
-                    if (!gg.isUndefined(transceiver)) {
-                        audio = transceiver;
+                return function (sender) {
+                    if (!gg.isUndefined(sender)) {
+                        audioSender = sender;
                     }
-                    return audio;
+                    return audioSender;
                 };
             }());
             mc.video = (function () {
-                var video = pc.addTransceiver("video");
+                var videoSender = stream.getVideoTracks().length > 0
+                    ? pc.addTrack(stream.getVideoTracks()[0], stream)
+                    : null;
 
-                video.sender.replaceTrack(stream.getVideoTracks()[0]);
-                return function (transceiver) {
-                    if (!gg.isUndefined(transceiver)) {
-                        video = transceiver;
+                return function (sender) {
+                    if (!gg.isUndefined(sender)) {
+                        videoSender = sender;
                     }
-                    return video;
+                    return videoSender;
                 };
             }());
+            pc.ontrack = function (e) {
+                mc.emit("track", e, e.streams);
+            };
             if (mc.initiator === true) {
                 mc.start = function () {
-                    pc.createOffer({ offerToReceiveAudio: 0, offerToReceiveVideo: 1 }).then(function (offer) {
+                    var offerOptions = {
+                        offerToReceiveAudio: mc.audio() ? 1 : 0,
+                        offerToReceiveVideo: mc.video() ? 1 : 0
+                    };
+
+                    pc.createOffer(offerOptions).then(function (offer) {
                         return pc.setLocalDescription(offer);
                     }).then(function () {
                         mc.emit("local-description");
@@ -7015,19 +7041,6 @@ module.exports = {
                     });
                 };
             } else {
-                pc.ontrack = function (e) {
-                    if (!e.transceiver) {
-                        return;
-                    }
-                    if (e.track.kind === "audio") {
-                        mc.audio(e.transceiver).direction = "sendrecv";
-                        mc.audio().sender.replaceTrack(stream.getAudioTracks()[0]);
-                    } else if (e.track.kind === "video") {
-                        mc.video(e.transceiver).direction = "sendrecv";
-                        mc.video().sender.replaceTrack(stream.getVideoTracks()[0]);
-                    }
-                    mc.emit("track", e, e.kind, e.track, e.streams);
-                };
                 mc.answer = function () {
                     pc.setRemoteDescription(store.sdp).then(function () {
                         mc.emit("remote-description");
@@ -7052,7 +7065,7 @@ module.exports = {
         return Object.freeze(mc);
     }
 
-    function dataConn(provider, peer, options) {
+    function dataConnection(provider, peer, options) {
         var dc = emitter();
         var store = {
             quiet: false,
@@ -7101,9 +7114,7 @@ module.exports = {
                 dc.emit("open");
             };
             channel.onmessage = function (e) {
-                var data = JSON.parse(gg.getStringFromCodes(e.data));
-
-                dc.emit("message", data);
+                dc.emit("message", e.data);
             };
             channel.onclose = function () {
                 dc.emit("close");
@@ -7136,6 +7147,7 @@ module.exports = {
                     }
                     dc.channel(channel);
                     dc.setup();
+                    dc.emit("channel", dc.channel());
                 };
                 dc.answer = function () {
                     pc.setRemoteDescription(store.sdp).then(function () {
@@ -7203,83 +7215,87 @@ module.exports = {
             }
             navigator.mediaDevices.getUserMedia(constraints).then(success).catch(failure);
         };
-        pro.addConn = function (conn) {
-            if (!store.connections.hasOwnProperty(conn.peer)) {
-                store.connections[conn.peer] = {};
+        pro.addConnection = function (connection) {
+            if (!store.connections.hasOwnProperty(connection.peer)) {
+                store.connections[connection.peer] = {
+                    media: {},
+                    data: {}
+                };
             }
-            store.connections[conn.peer][conn.id] = conn;
+            store.connections[connection.peer][connection.type][connection.id] = connection;
         };
-        pro.remConn = function (conn) {
-            if (!store.connections.hasOwnProperty(conn.peer)) {
+        pro.remConnection = function (connection) {
+            if (!store.connections.hasOwnProperty(connection.peer)) {
                 return;
             }
-            if (!store.connections[conn.peer].hasOwnProperty(conn.id)) {
+            if (!store.connections[connection.peer][connection.type].hasOwnProperty(connection.id)) {
                 return;
             }
-            delete store.connections[conn.peer][conn.id];
+            delete store.connections[connection.peer][connection.type][connection.id];
         };
-        pro.getConn = function (peer, id) {
+        pro.getConnection = function (peer, type, id) {
             if (!store.connections.hasOwnProperty(peer)) {
                 return;
             }
-            if (!store.connections[peer].hasOwnProperty(id)) {
+            if (!store.connections[peer][type].hasOwnProperty(id)) {
                 return;
             }
-            return store.connections[peer][id];
+            return store.connections[peer][type][id];
         };
         pro.gotCandidate = function (peer, msg) {
             var jsonmsg = JSON.parse(msg);
-            var conn = pro.getConn(peer, jsonmsg.id);
+            var connection = pro.getConnection(peer, jsonmsg.type, jsonmsg.id);
 
-            if (!conn) {
+            if (!connection) {
                 return;
             }
-            conn.pc.addIceCandidate(jsonmsg.candidate).then(function () {
-                pro.emit("add-candidate", jsonmsg.candidate);
+            connection.pc.addIceCandidate(jsonmsg.candidate).then(function () {
+                connection.emit("add-candidate", jsonmsg.candidate);
             }).catch(function (err) {
-                pro.emit("error", err);
+                connection.emit("error", err);
             });
         };
         pro.gotAnswer = function (peer, msg) {
             var jsonmsg = JSON.parse(msg);
-            var conn = pro.getConn(peer, jsonmsg.id);
+            var connection = pro.getConnection(peer, jsonmsg.type, jsonmsg.id);
 
-            if (!conn) {
+            if (!connection) {
                 return;
             }
-            conn.pc.setRemoteDescription(jsonmsg.sdp).then(function () {
-                conn.emit("remote-description");
+            connection.pc.setRemoteDescription(jsonmsg.sdp).then(function () {
+                connection.emit("remote-description");
             }).catch(function (err) {
-                conn.emit("error", err);
+                connection.emit("error", err);
             });
         };
         pro.gotOffer = function (peer, msg) {
             var jsonmsg = JSON.parse(msg);
-            var conn = pro.getConn(peer, jsonmsg.id);
+            var connection = pro.getConnection(peer, jsonmsg.type, jsonmsg.id);
 
-            if (conn) {
+            if (connection) {
                 return;
             }
-            conn = jsonmsg.type === "data"
-                ? dataConn(pro, peer, jsonmsg)
-                : mediaConn(pro, peer, jsonmsg);
-            pro.addConn(conn);
+            connection = jsonmsg.type === "data"
+                ? dataConnection(pro, peer, jsonmsg)
+                : mediaConnection(pro, peer, jsonmsg);
+            pro.addConnection(connection);
             pro.emit(jsonmsg.type === "data"
                 ? "chat"
-                : "call", conn);
+                : "call", connection);
         };
         pro.chat = function (peer) {
-            var conn = dataConn(pro, peer, { initiator: true });
+            var connection = dataConnection(pro, peer, { initiator: true });
 
-            pro.addConn(conn);
-            return conn;
+            pro.addConnection(connection);
+            return connection;
         };
         pro.call = function (peer) {
-            var conn = mediaConn(pro, peer, { initiator: true });
+            var connection = mediaConnection(pro, peer, { initiator: true });
 
-            pro.addConn(conn);
-            return conn;
+            pro.addConnection(connection);
+            return connection;
         };
+        pro.store = store;
         return Object.freeze(pro);
     }
 

@@ -177,30 +177,40 @@
             var stream = mc.provider.stream();
 
             mc.audio = (function () {
-                var audio = pc.addTransceiver("audio");
+                var audioSender = stream.getAudioTracks().length > 0
+                    ? pc.addTrack(stream.getAudioTracks()[0], stream)
+                    : null;
 
-                audio.sender.replaceTrack(stream.getAudioTracks()[0]);
-                return function (transceiver) {
-                    if (!gg.isUndefined(transceiver)) {
-                        audio = transceiver;
+                return function (sender) {
+                    if (!gg.isUndefined(sender)) {
+                        audioSender = sender;
                     }
-                    return audio;
+                    return audioSender;
                 };
             }());
             mc.video = (function () {
-                var video = pc.addTransceiver("video");
+                var videoSender = stream.getVideoTracks().length > 0
+                    ? pc.addTrack(stream.getVideoTracks()[0], stream)
+                    : null;
 
-                video.sender.replaceTrack(stream.getVideoTracks()[0]);
-                return function (transceiver) {
-                    if (!gg.isUndefined(transceiver)) {
-                        video = transceiver;
+                return function (sender) {
+                    if (!gg.isUndefined(sender)) {
+                        videoSender = sender;
                     }
-                    return video;
+                    return videoSender;
                 };
             }());
+            pc.ontrack = function (e) {
+                mc.emit("track", e, e.streams);
+            };
             if (mc.initiator === true) {
                 mc.start = function () {
-                    pc.createOffer().then(function (offer) {
+                    var offerOptions = {
+                        offerToReceiveAudio: mc.audio() ? 1 : 0,
+                        offerToReceiveVideo: mc.video() ? 1 : 0
+                    };
+
+                    pc.createOffer(offerOptions).then(function (offer) {
                         return pc.setLocalDescription(offer);
                     }).then(function () {
                         mc.emit("local-description");
@@ -209,19 +219,6 @@
                     });
                 };
             } else {
-                pc.ontrack = function (e) {
-                    if (!e.transceiver) {
-                        return;
-                    }
-                    if (e.track.kind === "audio") {
-                        mc.audio(e.transceiver).direction = "sendrecv";
-                        mc.audio().sender.replaceTrack(stream.getAudioTracks()[0]);
-                    } else if (e.track.kind === "video") {
-                        mc.video(e.transceiver).direction = "sendrecv";
-                        mc.video().sender.replaceTrack(stream.getVideoTracks()[0]);
-                    }
-                    mc.emit("track", e, e.track, e.streams);
-                };
                 mc.answer = function () {
                     pc.setRemoteDescription(store.sdp).then(function () {
                         mc.emit("remote-description");
@@ -476,6 +473,7 @@
             pro.addConnection(connection);
             return connection;
         };
+        pro.store = store;
         return Object.freeze(pro);
     }
 
