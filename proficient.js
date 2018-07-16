@@ -5754,7 +5754,9 @@ module.exports = {
         var array;
 
         if (isGG(value)) {
-            array = value.raw();
+            array = value.length() === 1
+                ? [value.raw()]
+                : value.raw();
         } else if (isBuffer(value)) {
             array = new Uint8Array(value);
         } else if (isString(value) || isArray(value) || isArrayLike(value) || isTypedArray(value)) {
@@ -5787,7 +5789,9 @@ module.exports = {
         var uint8;
 
         if (isGG(value)) {
-            uint8 = new Uint8Array(value.raw());
+            uint8 = new Uint8Array(value.length() === 1
+                ? [value.raw()]
+                : value.raw());
         } else if (isString(value)) {
             uint8 = new Uint8Array(getCodesFromString(value));
         } else if (isArray(value) || isArrayLike(value) || isTypedArray(value) || isBuffer(value)) {
@@ -5976,7 +5980,7 @@ module.exports = {
 
     function getStyle(node, pseudo) {
         return global.getComputedStyle(node, isUndefined(pseudo)
-            ? false
+            ? null
             : pseudo);
     }
 
@@ -6004,7 +6008,7 @@ module.exports = {
             var cloneid;
             var clone;
 
-            if (isObject(node) && node.gg === true && node.length() === 1) {
+            if (isGG(node) && node.length() === 1) {
                 node = node.raw();
             }
             if (isNode(node)) {
@@ -6055,7 +6059,9 @@ module.exports = {
             if (isNumber(index) && index >= 0 && index < store.length) {
                 return store[index];
             }
-            return store;
+            return store.length === 1
+                ? store[0]
+                : store;
         };
 
         gobject.length = function () {
