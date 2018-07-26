@@ -142,7 +142,7 @@
     };
 
     function mediaConnection(provider, peer, options) {
-        var mc = emitter();
+        var mc = gg.emitter();
         var store = {
             sdp: null,
             quiet: false
@@ -244,7 +244,7 @@
     }
 
     function dataConnection(provider, peer, options) {
-        var dc = emitter();
+        var dc = gg.emitter();
         var store = {
             quiet: false,
             sdp: null,
@@ -352,7 +352,7 @@
     }
 
     function proficient(name, room) {
-        var pro = emitter();
+        var pro = gg.emitter();
         var store = {
             connections: {},
             stream: null
