@@ -5370,7 +5370,7 @@ module.exports = {
 });
 
 //    Title: gg.js
-//    Author: Jon Cody
+//    Author: Jonathan David Cody
 //
 //    This program is free software: you can redistribute it and/or modify
 //    it under the terms of the GNU General Public License as published by
@@ -5388,6 +5388,7 @@ module.exports = {
 (function (global) {
     "use strict";
 
+    var cdb;
     var ease = Object.freeze({
         linearTween: function (t, b, c, d) {
             return c * t / d + b;
@@ -5511,6 +5512,7 @@ module.exports = {
             return id;
         };
     }());
+    var indexedDB = global.indexedDB || global.mozIndexedDB || global.webkitIndexedDB || global.msIndexedDB;
     var keyboardHandler;
     var keyboardListeners = [];
     var listeners = {};
@@ -5849,19 +5851,19 @@ module.exports = {
 
         function checkBounds(offset, len) {
             if (typeof offset !== "number") {
-                return console.log("offset is not a number");
+                return global.console.log("offset is not a number");
             }
             if (offset < 0) {
-                return console.log("offset is negative");
+                return global.console.log("offset is negative");
             }
             if (typeof len !== "number") {
-                return console.log("len is not a number");
+                return global.console.log("len is not a number");
             }
             if (len < 0) {
-                return console.log("len is negative");
+                return global.console.log("len is negative");
             }
             if (offset + len > store.view.byteLength) {
-                return console.log("bounds exceeded");
+                return global.console.log("bounds exceeded");
             }
         }
 
@@ -6150,7 +6152,7 @@ module.exports = {
             var args;
 
             if (list) {
-                args = Array.prototype.slice.call(arguments).slice(1);
+                args = Array.prototype.slice.call(arguments, 1);
                 list.forEach(function (value) {
                     value.apply(object, args);
                 });
@@ -7151,6 +7153,122 @@ module.exports = {
         });
     }
 
+    // STORAGE
+    cdb = emitter();
+
+    function cdbRequest(req, db) {
+        return Object.freeze({
+            request: function () {
+                return req;
+            },
+            database: function () {
+                return db;
+            },
+            select: function (table, key) {
+                return db.transaction([table], "readonly").objectStore(table).get(key);
+            },
+            selectAll: function (table, query, count) {
+                return db.transaction([table], "readonly").objectStore(table).getAll(query, count);
+            },
+            selectAllKeys: function (table, query, count) {
+                return db.transaction([table], "readonly").objectStore(table).getAllKeys(query, count);
+            },
+            delete: function (table, key) {
+                return db.transaction([table], "readwrite").objectStore(table).delete(key);
+            },
+            insert: function (table, value, key) {
+                return db.transaction([table], "readwrite").objectStore(table).add(value, key === undefined
+                    ? null
+                    : key);
+            },
+            update: function (table, value, key) {
+                return db.transaction([table], "readwrite").objectStore(table).put(value, key === undefined
+                    ? null
+                    : key);
+            },
+            clear: function (table) {
+                return db.transaction([table], "readwrite").objectStore(table).clear();
+            },
+            count: function (table, query) {
+                return db.transaction([table], "readonly").objectStore(table).count(query);
+            }
+        });
+    }
+
+    function cdbDatabase(db) {
+        return Object.freeze({
+            database: function () {
+                return db;
+            },
+            create: function (table, schema, options) {
+                var tableobj = db.createObjectStore(table, options);
+
+                if (!schema) {
+                    return tableobj;
+                }
+                Object.keys(schema).forEach(function (key) {
+                    schema[key].unshift(key);
+                    tableobj.createIndex.apply(tableobj, schema[key]);
+                });
+                return tableobj;
+            },
+            delete: function (table) {
+                db.deleteObjectStore(table);
+                cdb.emit("delete-table", table);
+            }
+        });
+    }
+
+    function dbError(e) {
+        cdb.emit("error", e);
+    }
+
+    function dbDeleteSuccess(e) {
+        cdb.emit("delete-db", e);
+    }
+
+    function dbUpgrade(e) {
+        var db = e.target.result;
+
+        db.onerror = dbError;
+        cdb.emit("upgrade", e, cdbDatabase(db));
+    }
+
+    function dbVersionChange(e) {
+        var db = e.target.result;
+
+        db.onerror = dbError;
+        cdb.emit("versionchange", e, cdbDatabase(db));
+    }
+
+    function dbOpenSuccess(e) {
+        var req = e.target;
+        var db = req.result;
+
+        db.onerror = dbError;
+        cdb.emit("open", e, cdbRequest(req, db));
+    }
+
+    cdb.open = function (name, version) {
+        var request = indexedDB.open(name, version);
+
+        request.onerror = dbError;
+        request.onsuccess = dbOpenSuccess;
+        request.onupgradeneeded = dbUpgrade;
+    };
+
+    cdb.delete = function (name) {
+        var request = indexedDB.deleteDatabase(name);
+
+        request.onerror = dbError;
+        request.onsuccess = dbDeleteSuccess;
+    };
+
+    if (!indexedDB) {
+        global.console.log("indexedDB was not found and/or supported!");
+        cdb = null;
+    }
+
     gg.typeOf = typeOf;
     gg.isArray = isArray;
     gg.isBoolean = isBoolean;
@@ -7202,13 +7320,14 @@ module.exports = {
     gg.mouseHandler = mouseHandler;
     gg.removeKeyboardHandlers = removeKeyboardHandlers;
     gg.removeMouseHandlers = removeMouseHandlers;
+    gg.cdb = Object.freeze(cdb);
 
     global.gg = Object.freeze(gg);
 
 }(window || this));
 
 //    Title: proficient.js
-//    Author: Jon Cody
+//    Author: Jonathan David Cody
 //
 //    This program is free software: you can redistribute it and/or modify
 //    it under the terms of the GNU General Public License as published by
