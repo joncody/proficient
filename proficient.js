@@ -5702,7 +5702,7 @@ module.exports = {
         return isObject(object) && object.gg === true;
     }
 
-    function isNaN(nan, noparse, base) {
+    function isNan(nan, noparse, base) {
         return noparse
             ? Number.isNaN(nan)
             : Number.isNaN(global.parseInt(nan, isNumber(base)
@@ -5822,60 +5822,6 @@ module.exports = {
             string += String.fromCharCode(char);
         });
         return string;
-    }
-
-    // GET
-    function getById(id, object) {
-        return document.getElementById(supplant(id, object));
-    }
-
-    function getPosition(el) {
-        var pos = {
-            x: 0,
-            y: 0
-        };
-
-        if (!isNode(el)) {
-            return;
-        }
-        while (el) {
-            if (el.nodeName.toLowerCase() === "body") {
-                pos.x += (el.offsetLeft - (el.scrollLeft || document.documentElement.scrollLeft) + el.clientLeft);
-                pos.y += (el.offsetTop - (el.scrollTop || document.documentElement.scrollTop) + el.clientTop);
-            } else {
-                pos.x += (el.offsetLeft - el.scrollLeft + el.clientLeft);
-                pos.y += (el.offsetTop - el.scrollTop + el.clientTop);
-            }
-            el = el.offsetParent;
-        }
-        return pos;
-    }
-
-    function getStyle(node, pseudo) {
-        return global.getComputedStyle(node, isUndefined(pseudo)
-            ? null
-            : pseudo);
-    }
-
-    // SET
-    function setImmediate(fn) {
-        if (!isFunction(fn)) {
-            return;
-        }
-        return global.setTimeout(fn, 0);
-    }
-
-    // SELECT
-    function select(selector, object, node) {
-        return isNode(node)
-            ? node.querySelector(supplant(selector, object))
-            : document.querySelector(supplant(selector, object));
-    }
-
-    function selectAll(selector, object, node) {
-        return isNode(node)
-            ? node.querySelectorAll(supplant(selector, object))
-            : document.querySelectorAll(supplant(selector, object));
     }
 
     // MISC
@@ -6101,7 +6047,7 @@ module.exports = {
         object.emitter = true;
         object.events = {};
 
-        object.addListener = function addListener(type, listener) {
+        object.addListener = function (type, listener) {
             var list = object.events[type];
 
             if (typeof listener === "function") {
@@ -6120,7 +6066,7 @@ module.exports = {
         };
         object.on = object.addListener;
 
-        object.once = function once(type, listener) {
+        object.once = function (type, listener) {
             function onetime() {
                 object.removeListener(type, onetime);
                 listener.apply(object);
@@ -6132,7 +6078,7 @@ module.exports = {
             return object;
         };
 
-        object.removeListener = function removeListener(type, listener) {
+        object.removeListener = function (type, listener) {
             var list = object.events[type];
             var position = -1;
 
@@ -6158,7 +6104,7 @@ module.exports = {
         };
         object.off = object.removeListener;
 
-        object.removeAllListeners = function removeAllListeners(type) {
+        object.removeAllListeners = function (type) {
             var list;
 
             if (!object.events.removeListener) {
@@ -6185,7 +6131,7 @@ module.exports = {
             return object;
         };
 
-        object.listeners = function listeners(type) {
+        object.listeners = function (type) {
             var list = [];
 
             if (typeof type === "string" && object.events[type]) {
@@ -6198,7 +6144,7 @@ module.exports = {
             return list;
         };
 
-        object.emit = function emit(type) {
+        object.emit = function (type) {
             var list = object.events[type];
             var bool = false;
             var args;
@@ -6290,7 +6236,9 @@ module.exports = {
     }
 
     function uuid() {
-        return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (a) {
+        var id = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx";
+
+        return id.replace(/[xy]/g, function (a) {
             var rand = Math.random() * 16 | 0;
             var value = a === "x"
                 ? rand
@@ -6300,61 +6248,58 @@ module.exports = {
         });
     }
 
-    // MISC - DOM
-    function create(tag) {
-        return inArray(taglist, tag)
-            ? gg(document.createElement(tag))
-            : null;
+    // GET
+    function getById(id, object) {
+        return document.getElementById(supplant(id, object));
     }
 
-    function scrollIntoView(el) {
-        var relativeTo = document.body;
-        var animation;
-        var max = relativeTo.scrollHeight - global.innerHeight;
-        var current = 0;
-        var start = relativeTo.scrollTop;
-        var end = relativeTo.scrollTop + getPosition(el).y > max
-            ? max
-            : relativeTo.scrollTop + getPosition(el).y;
-        var framerate = 60 / 1000;
-        var duration = 1200;
+    function getPosition(el) {
+        var pos = {
+            x: 0,
+            y: 0
+        };
 
-        function step() {
-            var newval;
-
-            if (current >= framerate * duration) {
-                return global.cancelAnimationFrame(animation);
-            }
-            current += 1;
-            newval = ease.easeInOutSine(current, start, end - start, framerate * duration);
-            relativeTo.scrollTop = newval;
-            animation = global.requestAnimationFrame(step);
+        if (!isNode(el)) {
+            return;
         }
-
-        animation = global.requestAnimationFrame(step);
+        while (el) {
+            if (el.nodeName.toLowerCase() === "body") {
+                pos.x += (el.offsetLeft - (el.scrollLeft || document.documentElement.scrollLeft) + el.clientLeft);
+                pos.y += (el.offsetTop - (el.scrollTop || document.documentElement.scrollTop) + el.clientTop);
+            } else {
+                pos.x += (el.offsetLeft - el.scrollLeft + el.clientLeft);
+                pos.y += (el.offsetTop - el.scrollTop + el.clientTop);
+            }
+            el = el.offsetParent;
+        }
+        return pos;
     }
 
-    function scrollToTop(el) {
-        var animation;
-        var current = 0;
-        var start = el.scrollTop;
-        var end = 0;
-        var framerate = 60 / 1000;
-        var duration = 1200;
+    function getStyle(node, pseudo) {
+        return global.getComputedStyle(node, isUndefined(pseudo)
+            ? null
+            : pseudo);
+    }
 
-        function step() {
-            var newval;
-
-            if (current >= framerate * duration) {
-                return global.cancelAnimationFrame(animation);
-            }
-            current += 1;
-            newval = ease.easeInOutSine(current, start, end - start, framerate * duration);
-            el.scrollTop = newval;
-            animation = global.requestAnimationFrame(step);
+    // SET
+    function setImmediate(fn) {
+        if (!isFunction(fn)) {
+            return;
         }
+        return global.setTimeout(fn, 0);
+    }
 
-        animation = global.requestAnimationFrame(step);
+    // SELECT
+    function select(selector, object, node) {
+        return isNode(node)
+            ? node.querySelector(supplant(selector, object))
+            : document.querySelector(supplant(selector, object));
+    }
+
+    function selectAll(selector, object, node) {
+        return isNode(node)
+            ? node.querySelectorAll(supplant(selector, object))
+            : document.querySelectorAll(supplant(selector, object));
     }
 
     // GG
@@ -6509,13 +6454,12 @@ module.exports = {
                 name.forEach(function (key) {
                     values[key] = gobject.attr(key);
                 });
-                return values;
             } else if (isUndefined(value) && attrname) {
                 values = [];
                 each(store, function (node) {
                     values.push(node[attrname]);
                 });
-                return values.length === 0
+                values = values.length === 0
                     ? null
                     : values.length === 1
                         ? values[0]
@@ -6525,7 +6469,9 @@ module.exports = {
                     node[attrname] = value;
                 });
             }
-            return gobject;
+            return isUndefined(values)
+                ? gobject
+                : values;
         };
 
         gobject.before = function (item) {
@@ -6560,7 +6506,7 @@ module.exports = {
                 each(store, function (node) {
                     values.push(node.className);
                 });
-                return values.length === 0
+                values = values.length === 0
                     ? null
                     : values.length === 1
                         ? values[0]
@@ -6570,7 +6516,9 @@ module.exports = {
                     node.className = string.trim();
                 });
             }
-            return gobject;
+            return isUndefined(string)
+                ? values
+                : gobject;
         };
 
         gobject.clone = function (deep, deeper) {
@@ -6597,7 +6545,7 @@ module.exports = {
         };
 
         gobject.data = function (name, value) {
-            var dataname = isString(name) && (name.length < 4 || name.slice(0, 4) !== "data")
+            var dataname = (isString(name) && (name.length < 4 || name.slice(0, 4) !== "data"))
                 ? toHyphenated("data-" + name)
                 : toHyphenated(name);
             var values;
@@ -6611,13 +6559,12 @@ module.exports = {
                 name.forEach(function (key) {
                     values[key] = gobject.data(key);
                 });
-                return values;
             } else if (isUndefined(value) && dataname) {
                 values = [];
                 each(store, function (node) {
                     values.push(node.getAttribute(dataname));
                 });
-                return values.length === 0
+                values = values.length === 0
                     ? null
                     : values.length === 1
                         ? values[0]
@@ -6627,7 +6574,9 @@ module.exports = {
                     node.setAttribute(dataname, value);
                 });
             }
-            return gobject;
+            return isUndefined(values)
+                ? gobject
+                : values;
         };
 
         gobject.each = function (func) {
@@ -6680,7 +6629,7 @@ module.exports = {
                 each(store, function (node) {
                     values.push(node.innerHTML);
                 });
-                return values.length === 0
+                values = values.length === 0
                     ? null
                     : values.length === 1
                         ? values[0]
@@ -6690,7 +6639,9 @@ module.exports = {
                     node.innerHTML = string;
                 });
             }
-            return gobject;
+            return isUndefined(string)
+                ? values
+                : gobject;
         };
 
         gobject.insert = (function () {
@@ -6850,13 +6801,12 @@ module.exports = {
                 name.forEach(function (key) {
                     values[key] = gobject.prop(key);
                 });
-                return values;
             } else if (isUndefined(value) && propname) {
                 values = [];
                 each(store, function (node) {
                     values.push(node.style[propname] || global.getComputedStyle(node, null).getPropertyValue(propname));
                 });
-                return values.length === 0
+                values = values.length === 0
                     ? null
                     : values.length === 1
                         ? values[0]
@@ -6866,7 +6816,9 @@ module.exports = {
                     node.style[propname] = value;
                 });
             }
-            return gobject;
+            return isUndefined(values)
+                ? gobject
+                : values;
         };
         gobject.css = gobject.prop;
         gobject.style = gobject.prop;
@@ -6940,7 +6892,7 @@ module.exports = {
         };
 
         gobject.remData = function (name) {
-            var dataname = isString(name) && (name.length < 4 || name.slice(0, 4) !== "data")
+            var dataname = (isString(name) && (name.length < 4 || name.slice(0, 4) !== "data"))
                 ? toHyphenated("data-" + name)
                 : toHyphenated(name);
 
@@ -7027,7 +6979,7 @@ module.exports = {
                 each(store, function (node) {
                     values.push(node.textContent);
                 });
-                return values.length === 0
+                values = values.length === 0
                     ? null
                     : values.length === 1
                         ? values[0]
@@ -7037,7 +6989,9 @@ module.exports = {
                     node.textContent = string;
                 });
             }
-            return gobject;
+            return isUndefined(string)
+                ? values
+                : gobject;
         };
 
         gobject.togClass = function (string) {
@@ -7063,6 +7017,63 @@ module.exports = {
         };
 
         return Object.freeze(gobject);
+    }
+
+    // MISC - DOM
+    function create(tag) {
+        return inArray(taglist, tag)
+            ? gg(document.createElement(tag))
+            : null;
+    }
+
+    function scrollIntoView(el) {
+        var relativeTo = document.body;
+        var animation;
+        var max = relativeTo.scrollHeight - global.innerHeight;
+        var current = 0;
+        var start = relativeTo.scrollTop;
+        var end = relativeTo.scrollTop + getPosition(el).y > max
+            ? max
+            : relativeTo.scrollTop + getPosition(el).y;
+        var framerate = 60 / 1000;
+        var duration = 1200;
+
+        function step() {
+            var newval;
+
+            if (current >= framerate * duration) {
+                return global.cancelAnimationFrame(animation);
+            }
+            current += 1;
+            newval = ease.easeInOutSine(current, start, end - start, framerate * duration);
+            relativeTo.scrollTop = newval;
+            animation = global.requestAnimationFrame(step);
+        }
+
+        animation = global.requestAnimationFrame(step);
+    }
+
+    function scrollToTop(el) {
+        var animation;
+        var current = 0;
+        var start = el.scrollTop;
+        var end = 0;
+        var framerate = 60 / 1000;
+        var duration = 1200;
+
+        function step() {
+            var newval;
+
+            if (current >= framerate * duration) {
+                return global.cancelAnimationFrame(animation);
+            }
+            current += 1;
+            newval = ease.easeInOutSine(current, start, end - start, framerate * duration);
+            el.scrollTop = newval;
+            animation = global.requestAnimationFrame(step);
+        }
+
+        animation = global.requestAnimationFrame(step);
     }
 
     // UI
@@ -7153,7 +7164,7 @@ module.exports = {
     gg.isBuffer = isBuffer;
     gg.isEmpty = isEmpty;
     gg.isGG = isGG;
-    gg.isNaN = isNaN;
+    gg.isNan = isNan;
     gg.isNode = isNode;
     gg.isTypedArray = isTypedArray;
     gg.toArray = toArray;
@@ -7165,12 +7176,6 @@ module.exports = {
     gg.toUint8 = toUint8;
     gg.toBuffer = toBuffer;
     gg.toStringFromCodes = toStringFromCodes;
-    gg.getById = getById;
-    gg.getPosition = getPosition;
-    gg.getStyle = getStyle;
-    gg.setImmediate = setImmediate;
-    gg.select = select;
-    gg.selectAll = selectAll;
     gg.arrSlice = arrSlice;
     gg.betterview = betterview;
     gg.copy = copy;
@@ -7184,6 +7189,12 @@ module.exports = {
     gg.noop = noop;
     gg.supplant = supplant;
     gg.uuid = uuid;
+    gg.getById = getById;
+    gg.getPosition = getPosition;
+    gg.getStyle = getStyle;
+    gg.setImmediate = setImmediate;
+    gg.select = select;
+    gg.selectAll = selectAll;
     gg.create = create;
     gg.scrollIntoView = scrollIntoView;
     gg.scrollToTop = scrollToTop;
