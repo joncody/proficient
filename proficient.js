@@ -1968,7 +1968,7 @@ SDPUtils.writeCandidate = function(candidate) {
 // a=ice-options:foo bar
 SDPUtils.parseIceOptions = function(line) {
   return line.substr(14).split(' ');
-}
+};
 
 // Parses an rtpmap line, returns RTCRtpCoddecParameters. Sample input:
 // a=rtpmap:111 opus/48000/2
@@ -2101,6 +2101,16 @@ SDPUtils.parseSsrcMedia = function(line) {
   return parts;
 };
 
+SDPUtils.parseSsrcGroup = function(line) {
+  var parts = line.substr(13).split(' ');
+  return {
+    semantics: parts.shift(),
+    ssrcs: parts.map(function(ssrc) {
+      return parseInt(ssrc, 10);
+    })
+  };
+};
+
 // Extracts the MID (RFC 5888) from a media section.
 // returns the MID or undefined if no mid line was found.
 SDPUtils.getMid = function(mediaSection) {
@@ -2108,7 +2118,7 @@ SDPUtils.getMid = function(mediaSection) {
   if (mid) {
     return mid.substr(6);
   }
-}
+};
 
 SDPUtils.parseFingerprint = function(line) {
   var parts = line.substr(14).split(' ');
@@ -2285,7 +2295,7 @@ SDPUtils.parseRtpEncodingParameters = function(mediaSection) {
     if (codec.name.toUpperCase() === 'RTX' && codec.parameters.apt) {
       var encParam = {
         ssrc: primarySsrc,
-        codecPayloadType: parseInt(codec.parameters.apt, 10),
+        codecPayloadType: parseInt(codec.parameters.apt, 10)
       };
       if (primarySsrc && secondarySsrc) {
         encParam.rtx = {ssrc: secondarySsrc};
@@ -2330,8 +2340,7 @@ SDPUtils.parseRtpEncodingParameters = function(mediaSection) {
 SDPUtils.parseRtcpParameters = function(mediaSection) {
   var rtcpParameters = {};
 
-  var cname;
-  // Gets the first SSRC. Note that with RTX there might be multiple
+  // Gets the first SSRC. Note tha with RTX there might be multiple
   // SSRCs.
   var remoteSsrc = SDPUtils.matchPrefix(mediaSection, 'a=ssrc:')
       .map(function(line) {
@@ -2372,8 +2381,8 @@ SDPUtils.parseMsid = function(mediaSection) {
   .map(function(line) {
     return SDPUtils.parseSsrcMedia(line);
   })
-  .filter(function(parts) {
-    return parts.attribute === 'msid';
+  .filter(function(msidParts) {
+    return msidParts.attribute === 'msid';
   });
   if (planB.length > 0) {
     parts = planB[0].value.split(' ');
@@ -2403,7 +2412,8 @@ SDPUtils.writeSessionBoilerplate = function(sessId, sessVer) {
   }
   // FIXME: sess-id should be an NTP timestamp.
   return 'v=0\r\n' +
-      'o=thisisadapterortc ' + sessionId + ' ' + version + ' IN IP4 127.0.0.1\r\n' +
+      'o=thisisadapterortc ' + sessionId + ' ' + version +
+        ' IN IP4 127.0.0.1\r\n' +
       's=-\r\n' +
       't=0 0\r\n';
 };
@@ -2513,9 +2523,24 @@ SDPUtils.parseOLine = function(mediaSection) {
     sessionVersion: parseInt(parts[2], 10),
     netType: parts[3],
     addressType: parts[4],
-    address: parts[5],
+    address: parts[5]
   };
-}
+};
+
+// a very naive interpretation of a valid SDP.
+SDPUtils.isValidSDP = function(blob) {
+  if (typeof blob !== 'string' || blob.length === 0) {
+    return false;
+  }
+  var lines = SDPUtils.splitLines(blob);
+  for (var i = 0; i < lines.length; i++) {
+    if (lines[i].length < 2 || lines[i].charAt(1) !== '=') {
+      return false;
+    }
+    // TODO: check the modifier a bit more.
+  }
+  return true;
+};
 
 // Expose public methods.
 if (typeof module === 'object') {
@@ -2676,12 +2701,12 @@ module.exports = function(dependencies, opts) {
       commonShim.shimCreateObjectURL(window);
 
       safariShim.shimRTCIceServerUrls(window);
+      safariShim.shimCreateOfferLegacy(window);
       safariShim.shimCallbacksAPI(window);
       safariShim.shimLocalStreamsAPI(window);
       safariShim.shimRemoteStreamsAPI(window);
       safariShim.shimTrackEventTransceiver(window);
       safariShim.shimGetUserMedia(window);
-      safariShim.shimCreateOfferLegacy(window);
 
       commonShim.shimRTCIceCandidate(window);
       commonShim.shimMaxMessageSize(window);
@@ -3773,6 +3798,9 @@ module.exports = function(window) {
   };
 
   var shimError_ = function(e) {
+    if (browserDetails.version >= 64) {
+      return e;
+    }
     return {
       name: {
         PermissionDeniedError: 'NotAllowedError',
@@ -4390,7 +4418,9 @@ module.exports = {
               this.dispatchEvent(event);
             }.bind(this));
           }.bind(this));
-        }
+        },
+        enumerable: true,
+        configurable: true
       });
     }
     if (typeof window === 'object' && window.RTCTrackEvent &&
@@ -4979,12 +5009,17 @@ module.exports = {
           return this._onaddstream;
         },
         set: function(f) {
-          var pc = this;
           if (this._onaddstream) {
             this.removeEventListener('addstream', this._onaddstream);
-            this.removeEventListener('track', this._onaddstreampoly);
           }
           this.addEventListener('addstream', this._onaddstream = f);
+        }
+      });
+      var origSetRemoteDescription =
+          window.RTCPeerConnection.prototype.setRemoteDescription;
+      window.RTCPeerConnection.prototype.setRemoteDescription = function() {
+        var pc = this;
+        if (!this._onaddstreampoly) {
           this.addEventListener('track', this._onaddstreampoly = function(e) {
             e.streams.forEach(function(stream) {
               if (!pc._remoteStreams) {
@@ -5000,7 +5035,8 @@ module.exports = {
             });
           });
         }
-      });
+        return origSetRemoteDescription.apply(pc, arguments);
+      };
     }
   },
   shimCallbacksAPI: function(window) {
@@ -5160,7 +5196,7 @@ module.exports = {
         }
 
 
-        if (typeof offerOptions.offerToReceiveAudio !== 'undefined') {
+        if (typeof offerOptions.offerToReceiveVideo !== 'undefined') {
           // support bit values
           offerOptions.offerToReceiveVideo = !!offerOptions.offerToReceiveVideo;
         }
@@ -5513,10 +5549,10 @@ module.exports = {
         };
     }());
     var indexedDB = global.indexedDB || global.mozIndexedDB || global.webkitIndexedDB || global.msIndexedDB;
-    var keyboardHandler;
+    var keyboardListener;
     var keyboardListeners = [];
     var listeners = {};
-    var mouseHandler;
+    var mouseListener;
     var mouseListeners = [];
     var taglist = [
         "a",
@@ -5637,10 +5673,6 @@ module.exports = {
         };
     }
 
-    function arrSlice(value, begin, end) {
-        return Array.prototype.slice.call(value, begin, end);
-    }
-
     Number.isNaN = Number.isNaN || function (value) {
         return value !== value;
     };
@@ -5656,71 +5688,75 @@ module.exports = {
         return type;
     }
 
+    // SHORTHAND
+    function arrSlice(value, begin, end) {
+        return Array.prototype.slice.call(value, begin, end);
+    }
+
     // IS
-    function isArray(array) {
-        return typeOf(array) === "array";
+    function isArray(value) {
+        return typeOf(value) === "array";
     }
 
-    function isBoolean(boolean) {
-        return typeOf(boolean) === "boolean";
+    function isBoolean(value) {
+        return typeOf(value) === "boolean";
     }
 
-    function isFunction(func) {
-        return typeOf(func) === "function";
+    function isFunction(value) {
+        return typeOf(value) === "function";
     }
 
-    function isNull(nul) {
-        return typeOf(nul) === "null";
+    function isNull(value) {
+        return typeOf(value) === "null";
     }
 
-    function isNumber(number) {
-        return typeOf(number) === "number" && !Number.isNaN(number);
+    function isNumber(value) {
+        return typeOf(value) === "number" && !Number.isNaN(value);
     }
 
-    function isObject(object) {
-        return typeOf(object) === "object";
+    function isObject(value) {
+        return typeOf(value) === "object";
     }
 
-    function isString(string) {
-        return typeOf(string) === "string";
+    function isString(value) {
+        return typeOf(value) === "string";
     }
 
-    function isUndefined(undef) {
-        return typeOf(undef) === "undefined";
+    function isUndefined(value) {
+        return typeOf(value) === "undefined";
     }
 
-    // IS - SPECIAL
-    function isArrayLike(object) {
-        return isObject(object) && !isUndefined(object.length) && Object.keys(object).every(function (key) {
+    function isArrayLike(value) {
+        return isObject(value) && !isUndefined(value.length) && Object.keys(value).every(function (key) {
             return key === "length" || isNumber(global.parseInt(key, 10));
         });
     }
 
-    function isBuffer(buffer) {
-        return !isUndefined(global.ArrayBuffer) && buffer instanceof ArrayBuffer;
+    function isBuffer(value) {
+        return !isUndefined(global.ArrayBuffer) && value instanceof ArrayBuffer;
     }
 
-    function isEmpty(object) {
-        return isObject(object) && Object.keys(object).length === 0;
+    function isEmpty(value) {
+        return isObject(value) && Object.keys(value).length === 0;
     }
 
-    function isGG(object) {
-        return isObject(object) && object.gg === true;
+    function isGG(value) {
+        return isObject(value) && value.gg === true;
     }
 
-    function isNan(nan, noparse, base) {
+    function isNan(value, noparse, base) {
         return noparse
-            ? Number.isNaN(nan)
-            : Number.isNaN(global.parseInt(nan, isNumber(base)
+            ? Number.isNaN(value)
+            : Number.isNaN(global.parseInt(value, isNumber(base)
                 ? base
                 : 10));
     }
 
-    function isNode(node) {
-        return isObject(node) && isString(node.nodeName) && isNumber(node.nodeType);
+    function isNode(value) {
+        return isObject(value) && isString(value.nodeName) && isNumber(value.nodeType);
     }
 
-    function isTypedArray(array) {
+    function isTypedArray(value) {
         var types = [
             "Int8Array",
             "Uint8Array",
@@ -5732,58 +5768,58 @@ module.exports = {
             "Float32Array",
             "Float64Array"
         ];
-        var type = Object.prototype.toString.call(array).replace(/\[object\s(\w+)\]/, "$1");
+        var type = Object.prototype.toString.call(value).replace(/\[object\s(\w+)\]/, "$1");
 
         return types.indexOf(type) > -1;
     }
 
     // TO
     function toArray(value) {
-        var array;
+        var list;
 
         if (isGG(value)) {
-            array = value.length() === 1
+            list = value.length() === 1
                 ? [value.raw()]
                 : value.raw();
         } else if (isNumber(value) || isBuffer(value)) {
-            array = arrSlice(new Uint8Array(value));
-        } else if (isString(value) || isArray(value) || isArrayLike(value) || isTypedArray(value) || isBuffer(value)) {
-            array = arrSlice(value);
+            list = arrSlice(new Uint8Array(value));
+        } else if (isString(value) || isArray(value) || isArrayLike(value) || isTypedArray(value)) {
+            list = arrSlice(value);
         } else {
-            array = [value];
+            list = [value];
         }
-        return array;
+        return list;
     }
 
-    function toCamelCase(string) {
-        return isString(string) && string.replace(/-([a-z])/g, function (a) {
+    function toCamelCase(value) {
+        return isString(value) && value.replace(/-([a-z])/g, function (a) {
             return a[1].toUpperCase();
         });
     }
 
-    function toCodesFromString(string) {
+    function toCodesFromString(value) {
         var codes = [];
 
-        toArray(string).forEach(function (char) {
+        toArray(value).forEach(function (char) {
             codes.push(char.charCodeAt(0));
         });
         return codes;
     }
 
-    function toFloat(value, digits) {
+    function toFloat(value, decimals) {
         var float = global.parseFloat(isString(value)
             ? value.replace(",", "")
             : value);
 
         return Number.isNaN(float)
             ? 0
-            : isNumber(digits)
-                ? float.toFixed(digits)
+            : isNumber(decimals)
+                ? float.toFixed(decimals)
                 : float;
     }
 
-    function toHyphenated(string) {
-        return isString(string) && string.replace(/([A-Z])/g, function (a) {
+    function toHyphenated(value) {
+        return isString(value) && value.replace(/([A-Z])/g, function (a) {
             return "-" + a.toLowerCase();
         });
     }
@@ -5821,17 +5857,17 @@ module.exports = {
         return toUint8(value).buffer;
     }
 
-    function toStringFromCodes(codes) {
+    function toStringFromCodes(value) {
         var string = "";
 
-        toArray(codes).forEach(function (char) {
+        toArray(value).forEach(function (char) {
             string += String.fromCharCode(char);
         });
         return string;
     }
 
-    // MISC
-    function betterview(buffer, offset, length) {
+    // MISCELLANEOUS
+    function betterview(value, offset, length) {
         var numbersandbytes = {
             "Int8": 1,
             "Uint8": 1,
@@ -5845,7 +5881,7 @@ module.exports = {
         var better = {};
         var store = {};
 
-        store.buffer = toBuffer(buffer);
+        store.buffer = toBuffer(value);
         store.view = new DataView(store.buffer, offset || 0, length || store.buffer.byteLength);
         store.offset = 0;
 
@@ -5899,25 +5935,25 @@ module.exports = {
             return toUint8(store.view.buffer.slice(offset, offset + len));
         }
 
-        function setBytes(offset, bytes) {
-            var convertedbytes = toUint8(bytes);
-            var len = convertedbytes.byteLength || convertedbytes.length || 0;
+        function setBytes(offset, value) {
+            var bytes = toUint8(value);
+            var len = bytes.byteLength || bytes.length || 0;
 
             offset = offset === undefined
                 ? store.offset
                 : offset;
             checkBounds(offset, len);
             store.offset = offset + len;
-            toUint8(store.view.buffer).set(convertedbytes, offset);
+            toUint8(store.view.buffer).set(bytes, offset);
             return better;
         }
 
-        function writeBytes(bytes) {
-            var convertedbytes = toUint8(bytes);
-            var len = convertedbytes.byteLength || convertedbytes.length || 0;
+        function writeBytes(value) {
+            var bytes = toUint8(value);
+            var len = bytes.byteLength || bytes.length || 0;
 
             checkBounds(store.offset, len);
-            toUint8(store.view.buffer).set(convertedbytes, store.offset);
+            toUint8(store.view.buffer).set(bytes, store.offset);
             store.offset = store.offset + len;
             return better;
         }
@@ -5926,12 +5962,12 @@ module.exports = {
             return toStringFromCodes(getBytes(len, offset));
         }
 
-        function setString(offset, string) {
-            return setBytes(offset, toCodesFromString(string));
+        function setString(offset, value) {
+            return setBytes(offset, toCodesFromString(value));
         }
 
-        function writeString(string) {
-            return writeBytes(toCodesFromString(string));
+        function writeString(value) {
+            return writeBytes(toCodesFromString(value));
         }
 
         function getChar(offset) {
@@ -5946,13 +5982,13 @@ module.exports = {
             return writeString(character);
         }
 
-        function getNumber(type, bytes) {
+        function getNumber(type, value) {
             return function (offset) {
                 offset = offset === undefined
                     ? store.offset
                     : offset;
-                checkBounds(offset, bytes);
-                store.offset = offset + bytes;
+                checkBounds(offset, value);
+                store.offset = offset + value;
                 return store.view["get" + type](offset);
             };
         }
@@ -6021,67 +6057,67 @@ module.exports = {
         return c;
     }
 
-    function each(items, func, thisarg) {
-        if (!isFunction(func)) {
+    function each(items, executable, thisarg) {
+        if (!isFunction(executable)) {
             return;
         }
         if (isUndefined(thisarg)) {
             thisarg = items;
         }
         if (isGG(items)) {
-            items.eachRaw(func);
+            items.eachRaw(executable);
         } else if (isNode(items)) {
-            func.call(thisarg, items, 0, thisarg);
+            executable.call(thisarg, items, 0, thisarg);
         } else if (isArray(items) || isArrayLike(items) || isTypedArray(items) || isBuffer(items)) {
-            toArray(items).forEach(func, thisarg);
+            toArray(items).forEach(executable, thisarg);
         } else if (isObject(items)) {
             Object.keys(items).forEach(function (key) {
-                func.call(thisarg, items[key], key, thisarg);
+                executable.call(thisarg, items[key], key, thisarg);
             });
         }
         return thisarg;
     }
 
-    function emitter(object) {
-        object = (object && typeof object === "object")
-            ? object
+    function emitter(value) {
+        var em = (value && typeof value === "object")
+            ? value
             : {};
-        object.emitter = true;
-        object.events = {};
+        em.emitter = true;
+        em.events = {};
 
-        object.addListener = function (type, listener) {
-            var list = object.events[type];
+        em.addListener = function (type, listener) {
+            var list = em.events[type];
 
             if (typeof listener === "function") {
-                if (object.events.newListener) {
-                    object.emit("newListener", type, typeof listener.listener === "function"
+                if (em.events.newListener) {
+                    em.emit("newListener", type, typeof listener.listener === "function"
                         ? listener.listener
                         : listener);
                 }
                 if (!list) {
-                    object.events[type] = [listener];
+                    em.events[type] = [listener];
                 } else {
-                    object.events[type].push(listener);
+                    em.events[type].push(listener);
                 }
             }
-            return object;
+            return em;
         };
-        object.on = object.addListener;
+        em.on = em.addListener;
 
-        object.once = function (type, listener) {
+        em.once = function (type, listener) {
             function onetime() {
-                object.removeListener(type, onetime);
-                listener.apply(object);
+                em.removeListener(type, onetime);
+                listener.apply(em);
             }
             if (typeof listener === "function") {
                 onetime.listener = listener;
-                object.on(type, onetime);
+                em.on(type, onetime);
             }
-            return object;
+            return em;
         };
 
-        object.removeListener = function (type, listener) {
-            var list = object.events[type];
+        em.removeListener = function (type, listener) {
+            var list = em.events[type];
             var position = -1;
 
             if (typeof listener === "function" && list) {
@@ -6093,75 +6129,75 @@ module.exports = {
                 });
                 if (position >= 0) {
                     if (list.length === 1) {
-                        delete object.events[type];
+                        delete em.events[type];
                     } else {
                         list.splice(position, 1);
                     }
-                    if (object.events.removeListener) {
-                        object.emit("removeListener", type, listener);
+                    if (em.events.removeListener) {
+                        em.emit("removeListener", type, listener);
                     }
                 }
             }
-            return object;
+            return em;
         };
-        object.off = object.removeListener;
+        em.off = em.removeListener;
 
-        object.removeAllListeners = function (type) {
+        em.removeAllListeners = function (type) {
             var list;
 
-            if (!object.events.removeListener) {
+            if (!em.events.removeListener) {
                 if (!type) {
-                    object.events = {};
+                    em.events = {};
                 } else {
-                    delete object.events[type];
+                    delete em.events[type];
                 }
             } else if (!type) {
-                Object.keys(object.events).forEach(function (key) {
+                Object.keys(em.events).forEach(function (key) {
                     if (key !== "removeListener") {
-                        object.removeAllListeners(key);
+                        em.removeAllListeners(key);
                     }
                 });
-                object.removeAllListeners("removeListener");
-                object.events = {};
+                em.removeAllListeners("removeListener");
+                em.events = {};
             } else {
-                list = object.events[type];
+                list = em.events[type];
                 list.forEach(function (item) {
-                    object.removeListener(type, item);
+                    em.removeListener(type, item);
                 });
-                delete object.events[type];
+                delete em.events[type];
             }
-            return object;
+            return em;
         };
 
-        object.listeners = function (type) {
+        em.listeners = function (type) {
             var list = [];
 
-            if (typeof type === "string" && object.events[type]) {
-                list = object.events[type];
+            if (typeof type === "string" && em.events[type]) {
+                list = em.events[type];
             } else {
-                Object.keys(object.events).forEach(function (key) {
-                    list.push(object.events[key]);
+                Object.keys(em.events).forEach(function (key) {
+                    list.push(em.events[key]);
                 });
             }
             return list;
         };
 
-        object.emit = function (type) {
-            var list = object.events[type];
-            var bool = false;
+        em.emit = function (type) {
+            var list = em.events[type];
+            var emitted = false;
             var args;
 
             if (list) {
                 args = Array.prototype.slice.call(arguments, 1);
                 list.forEach(function (value) {
-                    value.apply(object, args);
+                    value.apply(em, args);
                 });
-                bool = true;
+                emitted = true;
             }
-            return bool;
+            return emitted;
         };
 
-        return object;
+        return em;
     }
 
     function equal(one, two) {
@@ -6185,19 +6221,19 @@ module.exports = {
         return result;
     }
 
-    function extend(object, add, overwrite) {
-        if (!isObject(object) || !isObject(add)) {
-            return object;
+    function extend(value, add, overwrite) {
+        if (!isObject(value) || !isObject(add)) {
+            return value;
         }
         overwrite = isBoolean(overwrite)
             ? overwrite
             : true;
         Object.keys(add).forEach(function (key) {
-            if (overwrite || !object.hasOwnProperty(key)) {
-                object[key] = copy(add[key]);
+            if (overwrite || !value.hasOwnProperty(key)) {
+                value[key] = copy(add[key]);
             }
         });
-        return object;
+        return value;
     }
 
     function inherits(ctor, superCtor) {
@@ -6216,63 +6252,59 @@ module.exports = {
         return ctor;
     }
 
-    function inArray(array, value) {
-        return isArray(array) && array.indexOf(value) > -1;
+    function inArray(list, value) {
+        return isArray(list) && list.indexOf(value) > -1;
     }
 
     function noop() {
         return;
     }
 
-    function supplant(string, object) {
-        function replace(a, b) {
-            var value = object[b];
+    function supplant(value, supplanter) {
+        function replaceExpression(expression, key) {
+            var val = supplanter[key];
 
-            return !isUndefined(value)
-                ? value
-                : a;
+            return !isUndefined(val)
+                ? val
+                : expression;
         }
-        return (isString(string) && isObject(object))
-            ? string.replace(/\{([^{}]*)\}/g, replace)
-            : string;
+        return (isString(value) && isObject(supplanter))
+            ? value.replace(/\{([^{}]*)\}/g, replaceExpression)
+            : value;
     }
 
     function uuid() {
         var id = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx";
 
-        return id.replace(/[xy]/g, function (a) {
+        return id.replace(/[xy]/g, function (char) {
             var rand = Math.random() * 16 | 0;
-            var value = a === "x"
+            var code = char === "x"
                 ? rand
                 : rand & 0x3 | 0x8;
 
-            return value.toString(16);
+            return code.toString(16);
         });
     }
 
     // GET
-    function getById(id, object) {
-        return document.getElementById(supplant(id, object));
-    }
-
-    function getPosition(el) {
+    function getPosition(node) {
         var pos = {
             x: 0,
             y: 0
         };
 
-        if (!isNode(el)) {
+        if (!isNode(node)) {
             return;
         }
-        while (el) {
-            if (el.nodeName.toLowerCase() === "body") {
-                pos.x += (el.offsetLeft - (el.scrollLeft || document.documentElement.scrollLeft) + el.clientLeft);
-                pos.y += (el.offsetTop - (el.scrollTop || document.documentElement.scrollTop) + el.clientTop);
+        while (node) {
+            if (node.nodeName.toLowerCase() === "body") {
+                pos.x += (node.offsetLeft - (node.scrollLeft || document.documentElement.scrollLeft) + node.clientLeft);
+                pos.y += (node.offsetTop - (node.scrollTop || document.documentElement.scrollTop) + node.clientTop);
             } else {
-                pos.x += (el.offsetLeft - el.scrollLeft + el.clientLeft);
-                pos.y += (el.offsetTop - el.scrollTop + el.clientTop);
+                pos.x += (node.offsetLeft - node.scrollLeft + node.clientLeft);
+                pos.y += (node.offsetTop - node.scrollTop + node.clientTop);
             }
-            el = el.offsetParent;
+            node = node.offsetParent;
         }
         return pos;
     }
@@ -6283,37 +6315,106 @@ module.exports = {
             : pseudo);
     }
 
-    // SET
-    function setImmediate(fn) {
-        if (!isFunction(fn)) {
+    // TIMEOUT
+    function setImmediate(executable) {
+        var args = arrSlice(arguments, 1);
+
+        if (!isFunction(executable)) {
             return;
         }
-        return global.setTimeout(fn, 0);
+        return global.setTimeout(executable, 0, args);
     }
 
-    // SELECT
-    function select(selector, object, node) {
-        return isNode(node)
-            ? node.querySelector(supplant(selector, object))
-            : document.querySelector(supplant(selector, object));
+    // QUERY
+    function getById(id, supplanter) {
+        return document.getElementById(supplant(id, supplanter));
     }
 
-    function selectAll(selector, object, node) {
+    function select(selector, supplanter, node) {
         return isNode(node)
-            ? node.querySelectorAll(supplant(selector, object))
-            : document.querySelectorAll(supplant(selector, object));
+            ? node.querySelector(supplant(selector, supplanter))
+            : document.querySelector(supplant(selector, supplanter));
+    }
+
+    function selectAll(selector, supplanter, node) {
+        return isNode(node)
+            ? node.querySelectorAll(supplant(selector, supplanter))
+            : document.querySelectorAll(supplant(selector, supplanter));
+    }
+
+    // SCROLL
+    function scrollIntoView(node, easingExec) {
+        var el = isGG(node)
+            ? node.raw(0)
+            : node;
+        var executable = !isFunction(easingExec)
+            ? ease.easeInOutSine
+            : easingExec
+        var relativeTo = document.body;
+        var animation;
+        var max = relativeTo.scrollHeight - global.innerHeight;
+        var current = 0;
+        var start = relativeTo.scrollTop;
+        var end = relativeTo.scrollTop + getPosition(el).y > max
+            ? max
+            : relativeTo.scrollTop + getPosition(el).y;
+        var framerate = 60 / 1000;
+        var duration = 1200;
+
+        function step() {
+            var newval;
+
+            if (current >= framerate * duration) {
+                return global.cancelAnimationFrame(animation);
+            }
+            current += 1;
+            newval = executable(current, start, end - start, framerate * duration);
+            relativeTo.scrollTop = newval;
+            animation = global.requestAnimationFrame(step);
+        }
+
+        animation = global.requestAnimationFrame(step);
+    }
+
+    function scrollToTop(node, easingExec) {
+        var el = isGG(node)
+            ? node.raw(0)
+            : node;
+        var executable = !isFunction(easingExec)
+            ? ease.easeInOutSine
+            : easingExec
+        var animation;
+        var current = 0;
+        var start = el.scrollTop;
+        var end = 0;
+        var framerate = 60 / 1000;
+        var duration = 1200;
+
+        function step() {
+            var newval;
+
+            if (current >= framerate * duration) {
+                return global.cancelAnimationFrame(animation);
+            }
+            current += 1;
+            newval = executable(current, start, end - start, framerate * duration);
+            el.scrollTop = newval;
+            animation = global.requestAnimationFrame(step);
+        }
+
+        animation = global.requestAnimationFrame(step);
     }
 
     // GG
-    function gg(mselector, object) {
+    function gg(mselector, supplanter) {
         var gobject = {
             gg: true
         };
         var store = [];
 
-        function closure(func, node, arg) {
+        function closure(executable, node, arg) {
             return function (e) {
-                return func.call(null, e, gg(node), arg);
+                return executable.call(null, e, gg(node), arg);
             };
         }
 
@@ -6337,14 +6438,14 @@ module.exports = {
             listeners[cloneid] = {};
             each(listeners[nodeid], function (list, type) {
                 listeners[cloneid][type] = {};
-                each(list, function (funcarray, funcid) {
-                    var func = funcarray[0];
-                    var bub = funcarray[2];
-                    var arg = funcarray[3];
-                    var newFunc = closure(func, clone, arg);
+                each(list, function (params, execid) {
+                    var executable = params[0];
+                    var bub = params[2];
+                    var arg = params[3];
+                    var closedExecutable = closure(executable, clone, arg);
 
-                    listeners[cloneid][type][funcid] = [func, newFunc, bub, arg];
-                    clone.addEventListener(type, newFunc, bub);
+                    listeners[cloneid][type][execid] = [executable, closedExecutable, bub, arg];
+                    clone.addEventListener(type, closedExecutable, bub);
                 });
             });
             return clone;
@@ -6355,7 +6456,7 @@ module.exports = {
         }
 
         if (isString(mselector)) {
-            mselector = selectAll(mselector, object);
+            mselector = selectAll(mselector, supplanter);
         }
 
         each(mselector, function (node) {
@@ -6373,12 +6474,12 @@ module.exports = {
             return gobject;
         };
 
-        gobject.addClass = function (string) {
-            if (!isString(string)) {
+        gobject.addClass = function (value) {
+            if (!isString(value)) {
                 return gobject;
             }
             each(store, function (node) {
-                string.split(/\s/g).forEach(function (substring) {
+                value.split(/\s/g).forEach(function (substring) {
                     var match = new RegExp("(?:^|\\s)" + substring + "(?:$|\\s)", "g");
 
                     if (!isObject(node.className)) {
@@ -6395,11 +6496,11 @@ module.exports = {
             return gobject;
         };
 
-        gobject.after = function (item) {
+        gobject.after = function (value) {
             var willcopy = store.length > 1;
 
             each(store, function (node) {
-                each(item, function (sibling) {
+                each(value, function (sibling) {
                     if (!isNode(sibling)) {
                         return;
                     }
@@ -6411,11 +6512,11 @@ module.exports = {
             return gobject;
         };
 
-        gobject.append = function (item) {
+        gobject.append = function (value) {
             var willcopy = store.length > 1;
 
             each(store, function (node) {
-                each(item, function (child) {
+                each(value, function (child) {
                     if (!isNode(child)) {
                         return;
                     }
@@ -6427,11 +6528,11 @@ module.exports = {
             return gobject;
         };
 
-        gobject.appendTo = function (item) {
-            var willcopy = toArray(item).length > 1;
+        gobject.appendTo = function (value) {
+            var willcopy = toArray(value).length > 1;
 
             each(store, function (node) {
-                each(item, function (parent) {
+                each(value, function (parent) {
                     if (!isNode(parent)) {
                         return;
                     }
@@ -6476,11 +6577,11 @@ module.exports = {
                 : values;
         };
 
-        gobject.before = function (item) {
+        gobject.before = function (value) {
             var willcopy = store.length > 1;
 
             each(store, function (node) {
-                each(item, function (sibling) {
+                each(value, function (sibling) {
                     if (!isNode(sibling)) {
                         return;
                     }
@@ -6501,10 +6602,10 @@ module.exports = {
             return gg(nodes);
         };
 
-        gobject.classes = function (string) {
+        gobject.classes = function (value) {
             var values = [];
 
-            if (isUndefined(string)) {
+            if (isUndefined(value)) {
                 each(store, function (node) {
                     values.push(node.className);
                 });
@@ -6513,12 +6614,12 @@ module.exports = {
                     : values.length === 1
                         ? values[0]
                         : values;
-            } else if (isString(string)) {
+            } else if (isString(value)) {
                 each(store, function (node) {
-                    node.className = string.trim();
+                    node.className = value.trim();
                 });
             }
-            return isUndefined(string)
+            return isUndefined(value)
                 ? values
                 : gobject;
         };
@@ -6581,15 +6682,15 @@ module.exports = {
                 : values;
         };
 
-        gobject.each = function (func) {
+        gobject.each = function (executable) {
             store.forEach(function (node, index, thisarg) {
-                func.call(thisarg, gg(node), index, thisarg);
+                executable.call(thisarg, gg(node), index, thisarg);
             }, gobject);
             return gobject;
         };
 
-        gobject.eachRaw = function (func) {
-            store.forEach(func, gobject);
+        gobject.eachRaw = function (executable) {
+            store.forEach(executable, gobject);
             return gobject;
         };
 
@@ -6600,14 +6701,14 @@ module.exports = {
             return gobject;
         };
 
-        gobject.hasClass = function (string) {
+        gobject.hasClass = function (value) {
             var values = [];
 
-            if (!isString(string)) {
+            if (!isString(value)) {
                 return false;
             }
             each(store, function (node) {
-                values.push(string.split(/\s/g).every(function (substring) {
+                values.push(value.split(/\s/g).every(function (substring) {
                     var match = new RegExp("(?:^|\\s)" + substring + "(?:$|\\s)", "g");
 
                     if (!isObject(node.className)) {
@@ -6624,10 +6725,10 @@ module.exports = {
                     : values;
         };
 
-        gobject.html = function (string) {
+        gobject.html = function (value) {
             var values = [];
 
-            if (isUndefined(string)) {
+            if (isUndefined(value)) {
                 each(store, function (node) {
                     values.push(node.innerHTML);
                 });
@@ -6636,12 +6737,12 @@ module.exports = {
                     : values.length === 1
                         ? values[0]
                         : values;
-            } else if (isString(string) || isNumber(string)) {
+            } else if (isString(value) || isNumber(value)) {
                 each(store, function (node) {
-                    node.innerHTML = string;
+                    node.innerHTML = value;
                 });
             }
-            return isUndefined(string)
+            return isUndefined(value)
                 ? values
                 : gobject;
         };
@@ -6649,15 +6750,15 @@ module.exports = {
         gobject.insert = (function () {
             var positions = ["beforebegin", "afterbegin", "beforeend", "afterend"];
 
-            return function (pos, item) {
-                if (!isString(item)) {
+            return function (pos, value) {
+                if (!isString(value)) {
                     return gobject;
                 }
                 if (!inArray(positions, pos)) {
                     pos = "beforeend";
                 }
                 each(store, function (node) {
-                    node.insertAdjacentHTML(pos, item);
+                    node.insertAdjacentHTML(pos, value);
                 });
                 return gobject;
             };
@@ -6667,7 +6768,7 @@ module.exports = {
             return store.length;
         };
 
-        gobject.off = function (type, func, bub) {
+        gobject.off = function (type, executable, bub) {
             if (!isString(type)) {
                 return gobject;
             }
@@ -6676,38 +6777,38 @@ module.exports = {
                 : false;
             each(store, function (node) {
                 var nodeid = global.parseInt(node.getAttribute("data-gg-id"), 10);
-                var funcid = isFunction(func) && func.ggid;
+                var execid = isFunction(executable) && executable.ggid;
 
                 if (!isNumber(nodeid) || !listeners.hasOwnProperty(nodeid) || !listeners[nodeid].hasOwnProperty(type)) {
                     return gobject;
                 }
-                if (isUndefined(func)) {
-                    each(listeners[nodeid][type], function (funcarray, funcid, list) {
-                        node.removeEventListener(type, funcarray[1], bub);
+                if (isUndefined(executable)) {
+                    each(listeners[nodeid][type], function (params, execid, list) {
+                        node.removeEventListener(type, params[1], bub);
                     });
                     delete listeners[nodeid][type];
-                } else if (isNumber(funcid) && listeners[nodeid][type].hasOwnProperty(funcid)) {
-                    node.removeEventListener(type, listeners[nodeid][type][funcid][1], bub);
-                    delete listeners[nodeid][type][funcid];
+                } else if (isNumber(execid) && listeners[nodeid][type].hasOwnProperty(execid)) {
+                    node.removeEventListener(type, listeners[nodeid][type][execid][1], bub);
+                    delete listeners[nodeid][type][execid];
                 }
             });
             return gobject;
         };
 
-        gobject.on = function (type, func, bub, arg) {
-            var funcid;
-            var newFunc;
+        gobject.on = function (type, executable, bub, arg) {
+            var execid;
+            var closedExecutable;
 
-            if (!isString(type) || !isFunction(func)) {
+            if (!isString(type) || !isFunction(executable)) {
                 return gobject;
             }
             bub = isBoolean(bub)
                 ? bub
                 : false;
-            funcid = isNumber(func.ggid)
-                ? func.ggid
+            execid = isNumber(executable.ggid)
+                ? executable.ggid
                 : ggid();
-            func.ggid = funcid;
+            executable.ggid = execid;
             each(store, function (node) {
                 var nodeid = !isNumber(global.parseInt(node.getAttribute("data-gg-id"), 10))
                     ? ggid()
@@ -6720,24 +6821,24 @@ module.exports = {
                 if (!listeners[nodeid].hasOwnProperty(type)) {
                     listeners[nodeid][type] = {};
                 }
-                if (listeners[nodeid][type].hasOwnProperty(funcid)) {
-                    node.removeEventListener(type, listeners[nodeid][type][funcid][1], bub);
+                if (listeners[nodeid][type].hasOwnProperty(execid)) {
+                    node.removeEventListener(type, listeners[nodeid][type][execid][1], bub);
                 }
-                newFunc = closure(func, node, arg);
-                listeners[nodeid][type][funcid] = [func, newFunc, bub, arg];
-                node.addEventListener(type, newFunc, bub);
+                closedExecutable = closure(executable, node, arg);
+                listeners[nodeid][type][execid] = [executable, closedExecutable, bub, arg];
+                node.addEventListener(type, closedExecutable, bub);
             });
             return gobject;
         };
 
-        gobject.once = function (type, func, bub, arg) {
+        gobject.once = function (type, executable, bub, arg) {
             function handler(node, arg) {
                 return function onetime(e) {
-                    func.call(null, e, gg(node), arg);
+                    executable.call(null, e, gg(node), arg);
                     node.removeEventListener(type, onetime, bub);
                 };
             }
-            if (!isString(type) || !isFunction(func)) {
+            if (!isString(type) || !isFunction(executable)) {
                 return gobject;
             }
             bub = isBoolean(bub)
@@ -6758,11 +6859,11 @@ module.exports = {
             return gg(nodes);
         };
 
-        gobject.prepend = function (item) {
+        gobject.prepend = function (value) {
             var willcopy = store.length > 1;
 
             each(store, function (node) {
-                each(item, function (child) {
+                each(value, function (child) {
                     if (!isNode(child)) {
                         return;
                     }
@@ -6774,11 +6875,11 @@ module.exports = {
             return gobject;
         };
 
-        gobject.prependTo = function (item) {
-            var willcopy = toArray(item).length > 1;
+        gobject.prependTo = function (value) {
+            var willcopy = toArray(value).length > 1;
 
             each(store, function (node) {
-                each(item, function (parent) {
+                each(value, function (parent) {
                     if (!isNode(parent)) {
                         return;
                     }
@@ -6834,8 +6935,8 @@ module.exports = {
                 : store;
         };
 
-        gobject.remove = function (item) {
-            if (isUndefined(item)) {
+        gobject.remove = function (value) {
+            if (isUndefined(value)) {
                 each(store, function (node) {
                     if (node.parentNode) {
                         node.parentNode.removeChild(node);
@@ -6843,7 +6944,7 @@ module.exports = {
                 });
             } else {
                 each(store, function (node) {
-                    each(item, function (child) {
+                    each(value, function (child) {
                         if (!isNode(child) || !node.contains(child)) {
                             return;
                         }
@@ -6875,12 +6976,12 @@ module.exports = {
             return gobject;
         };
 
-        gobject.remClass = function (string) {
-            if (!isString(string)) {
+        gobject.remClass = function (value) {
+            if (!isString(value)) {
                 return gobject;
             }
             each(store, function (node) {
-                string.split(/\s/).forEach(function (substring) {
+                value.split(/\s/).forEach(function (substring) {
                     var match = new RegExp("(?:^|\\s)" + substring + "(?:$|\\s)", "g");
 
                     if (!isObject(node.className)) {
@@ -6949,20 +7050,20 @@ module.exports = {
             return gobject;
         };
 
-        gobject.select = function (selector, object) {
+        gobject.select = function (selector, supplanter) {
             var nodes = [];
 
             each(store, function (node) {
-                nodes = nodes.concat(toArray(select(selector, object, node)));
+                nodes = nodes.concat(toArray(select(selector, supplanter, node)));
             });
             return gg(nodes);
         };
 
-        gobject.selectAll = function (selector, object) {
+        gobject.selectAll = function (selector, supplanter) {
             var nodes = [];
 
             each(store, function (node) {
-                nodes = nodes.concat(toArray(selectAll(selector, object, node)));
+                nodes = nodes.concat(toArray(selectAll(selector, supplanter, node)));
             });
             return gg(nodes);
         };
@@ -6974,10 +7075,10 @@ module.exports = {
             return gobject;
         };
 
-        gobject.text = function (string) {
+        gobject.text = function (value) {
             var values = [];
 
-            if (isUndefined(string)) {
+            if (isUndefined(value)) {
                 each(store, function (node) {
                     values.push(node.textContent);
                 });
@@ -6986,22 +7087,22 @@ module.exports = {
                     : values.length === 1
                         ? values[0]
                         : values;
-            } else if (isString(string) || isNumber(string)) {
+            } else if (isString(value) || isNumber(value)) {
                 each(store, function (node) {
-                    node.textContent = string;
+                    node.textContent = value;
                 });
             }
-            return isUndefined(string)
+            return isUndefined(value)
                 ? values
                 : gobject;
         };
 
-        gobject.togClass = function (string) {
-            if (!isString(string)) {
+        gobject.togClass = function (value) {
+            if (!isString(value)) {
                 return gobject;
             }
             each(store, function (node) {
-                string.split(/\s/).forEach(function (substring) {
+                value.split(/\s/).forEach(function (substring) {
                     var match = new RegExp("(?:^|\\s)" + substring + "(?:$|\\s)", "g");
 
                     if (!isObject(node.className)) {
@@ -7021,65 +7122,23 @@ module.exports = {
         return Object.freeze(gobject);
     }
 
-    // MISC - DOM
+    // CREATE
     function create(tag) {
         return inArray(taglist, tag)
             ? gg(document.createElement(tag))
             : null;
     }
 
-    function scrollIntoView(el) {
-        var relativeTo = document.body;
-        var animation;
-        var max = relativeTo.scrollHeight - global.innerHeight;
-        var current = 0;
-        var start = relativeTo.scrollTop;
-        var end = relativeTo.scrollTop + getPosition(el).y > max
-            ? max
-            : relativeTo.scrollTop + getPosition(el).y;
-        var framerate = 60 / 1000;
-        var duration = 1200;
+    // DEVICES
+    keyboardListener = (function () {
+        var common = {
+            "enter": 13,
+            "left": 37,
+            "up": 38,
+            "right": 39,
+            "down": 40
+        };
 
-        function step() {
-            var newval;
-
-            if (current >= framerate * duration) {
-                return global.cancelAnimationFrame(animation);
-            }
-            current += 1;
-            newval = ease.easeInOutSine(current, start, end - start, framerate * duration);
-            relativeTo.scrollTop = newval;
-            animation = global.requestAnimationFrame(step);
-        }
-
-        animation = global.requestAnimationFrame(step);
-    }
-
-    function scrollToTop(el) {
-        var animation;
-        var current = 0;
-        var start = el.scrollTop;
-        var end = 0;
-        var framerate = 60 / 1000;
-        var duration = 1200;
-
-        function step() {
-            var newval;
-
-            if (current >= framerate * duration) {
-                return global.cancelAnimationFrame(animation);
-            }
-            current += 1;
-            newval = ease.easeInOutSine(current, start, end - start, framerate * duration);
-            el.scrollTop = newval;
-            animation = global.requestAnimationFrame(step);
-        }
-
-        animation = global.requestAnimationFrame(step);
-    }
-
-    // UI
-    keyboardHandler = (function () {
         function keyDown(options, handlers) {
             return function (e) {
                 var keycode = e.keyCode;
@@ -7098,7 +7157,9 @@ module.exports = {
 
             options = extend({}, options);
             each(options, function (handler, key) {
-                var keycode = global.parseInt(key, 10);
+                var keycode = isString(key) && common.hasOwnProperty(key)
+                    ? common[key]
+                    : global.parseInt(key, 10);
 
                 if (isFunction(handler) && isNumber(keycode)) {
                     handlers[keycode] = handler;
@@ -7110,16 +7171,22 @@ module.exports = {
         };
     }());
 
-    mouseHandler = (function () {
+    mouseListener = (function () {
+        var common = {
+            "left": 0,
+            "middle": 1,
+            "right": 2
+        };
+
         function mouseDown(options, handlers) {
             return function (e) {
-                var keycode = e.button;
+                var buttoncode = e.button;
 
                 if (options.preventDefault) {
                     e.preventDefault();
                 }
-                if (isNumber(keycode) && handlers.hasOwnProperty(keycode)) {
-                    handlers[keycode](e);
+                if (isNumber(buttoncode) && handlers.hasOwnProperty(buttoncode)) {
+                    handlers[buttoncode](e);
                 }
             };
         }
@@ -7128,11 +7195,13 @@ module.exports = {
             var listener;
 
             options = extend({}, options);
-            each(options, function (handler, key) {
-                var keycode = global.parseInt(key, 10);
+            each(options, function (handler, button) {
+                var buttoncode = isString(button) && common.hasOwnProperty(button)
+                    ? common[button]
+                    : global.parseInt(button, 10);
 
-                if (isFunction(handler) && isNumber(keycode)) {
-                    handlers[keycode] = handler;
+                if (isFunction(handler) && isNumber(buttoncode)) {
+                    handlers[buttoncode] = handler;
                 }
             });
             listener = mouseDown(options, handlers);
@@ -7141,13 +7210,13 @@ module.exports = {
         };
     }());
 
-    function removeKeyboardHandlers() {
+    function removeKeyboardListeners() {
         keyboardListeners.forEach(function (listener) {
             gg(document.body).off("keydown", listener);
         });
     }
 
-    function removeMouseHandlers() {
+    function removeMouseListeners() {
         mouseListeners.forEach(function (listener) {
             gg(document.body).off("mousedown", listener);
         });
@@ -7269,8 +7338,8 @@ module.exports = {
         cdb = null;
     }
 
-    gg.arrSlice = arrSlice;
     gg.typeOf = typeOf;
+    gg.arrSlice = arrSlice;
     gg.isArray = isArray;
     gg.isBoolean = isBoolean;
     gg.isFunction = isFunction;
@@ -7298,7 +7367,6 @@ module.exports = {
     gg.betterview = betterview;
     gg.copy = copy;
     gg.each = each;
-    gg.ease = ease;
     gg.emitter = emitter;
     gg.equal = equal;
     gg.extend = extend;
@@ -7307,19 +7375,20 @@ module.exports = {
     gg.noop = noop;
     gg.supplant = supplant;
     gg.uuid = uuid;
-    gg.getById = getById;
     gg.getPosition = getPosition;
     gg.getStyle = getStyle;
     gg.setImmediate = setImmediate;
+    gg.getById = getById;
     gg.select = select;
     gg.selectAll = selectAll;
-    gg.create = create;
     gg.scrollIntoView = scrollIntoView;
     gg.scrollToTop = scrollToTop;
-    gg.keyboardHandler = keyboardHandler;
-    gg.mouseHandler = mouseHandler;
-    gg.removeKeyboardHandlers = removeKeyboardHandlers;
-    gg.removeMouseHandlers = removeMouseHandlers;
+    gg.create = create;
+    gg.keyboardListener = keyboardListener;
+    gg.mouseListener = mouseListener;
+    gg.removeKeyboardListeners = removeKeyboardListeners;
+    gg.removeMouseListeners = removeMouseListeners;
+    gg.ease = ease;
     gg.cdb = Object.freeze(cdb);
 
     global.gg = Object.freeze(gg);
