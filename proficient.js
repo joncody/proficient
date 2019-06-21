@@ -7242,18 +7242,21 @@ module.exports = {
             selectAllKeys: function (table, query, count) {
                 return db.transaction([table], "readonly").objectStore(table).getAllKeys(query, count);
             },
+            selectIndex: function (table, index, key) {
+                return db.transaction([table], "readonly").objectStore(table).index(index).get(key);
+            },
             delete: function (table, key) {
                 return db.transaction([table], "readwrite").objectStore(table).delete(key);
             },
             insert: function (table, value, key) {
-                return db.transaction([table], "readwrite").objectStore(table).add(value, key === undefined
-                    ? null
-                    : key);
+                return key === undefined
+                    ? db.transaction([table], "readwrite").objectStore(table).add(value)
+                    : db.transaction([table], "readwrite").objectStore(table).add(value, key);
             },
             update: function (table, value, key) {
-                return db.transaction([table], "readwrite").objectStore(table).put(value, key === undefined
-                    ? null
-                    : key);
+                return key === undefined
+                    ? db.transaction([table], "readwrite").objectStore(table).put(value)
+                    : db.transaction([table], "readwrite").objectStore(table).put(value, key);
             },
             clear: function (table) {
                 return db.transaction([table], "readwrite").objectStore(table).clear();
@@ -7302,7 +7305,6 @@ module.exports = {
 
             db.onerror = dbError;
             executable(e, cdbDatabase(db));
-            cdb.emit("upgrade", e, db);
         };
     }
 
