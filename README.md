@@ -5,43 +5,43 @@ A tasteful, WebRTC library.
 
 # API
 ## Table Of Contents
-- [Instance]
-  - [name]
-  - [room]
-  - [stream]
-  - [getMedia]
-  - [addConnection]
-  - [remConnection]
-  - [getConnection]
-  - [gotCandidate]
-  - [gotAnswer]
-  - [gotOffer]
-  - [chat]
-  - [call]
-- [DataConnection]
-  - [provider]
-  - [peer]
-  - [type]
-  - [id]
-  - [name]
-  - [initiator]
-  - [channel]
-  - [setup]
-  - [pc]
-  - [start/answer]
-  - [quiet]
-- [MediaConnection]
-  - [provider]
-  - [peer]
-  - [type]
-  - [id]
-  - [name]
-  - [initiator]
-  - [pc]
-  - [audio]
-  - [video]
-  - [start/answer]
-  - [quiet]
+- [Instance]()
+  - [name]()
+  - [room]()
+  - [stream]()
+  - [getMedia]()
+  - [addConnection]()
+  - [remConnection]()
+  - [getConnection]()
+  - [gotCandidate]()
+  - [gotAnswer]()
+  - [gotOffer]()
+  - [chat]()
+  - [call]()
+- [DataConnection]()
+  - [provider]()
+  - [peer]()
+  - [type]()
+  - [id]()
+  - [name]()
+  - [initiator]()
+  - [channel]()
+  - [setup]()
+  - [pc]()
+  - [start/answer]()
+  - [quiet]()
+- [MediaConnection]()
+  - [provider]()
+  - [peer]()
+  - [type]()
+  - [id]()
+  - [name]()
+  - [initiator]()
+  - [pc]()
+  - [audio]()
+  - [video]()
+  - [start/answer]()
+  - [quiet]()
 
 
 ### Instance
