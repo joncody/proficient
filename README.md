@@ -5,19 +5,20 @@ A tasteful, WebRTC library.
 
 # API
 ## Table Of Contents
-- [Instance]()
-  - [name]()
-  - [room]()
-  - [stream]()
-  - [getMedia]()
-  - [addConnection]()
-  - [remConnection]()
+- [Instance](#instance)
+  - [stream](#streamstream)
+  - [getMedia](#getmediatype)
+  - [addConnection](#addconnectionconn)
+  - [remConnection](#remconnectionconn)
   - [getConnection]()
   - [gotCandidate]()
   - [gotAnswer]()
   - [gotOffer]()
   - [chat]()
   - [call]()
+  - [name](#properties)
+  - [room](#properties)
+  - [store](#properties)
 - [DataConnection]()
   - [provider]()
   - [peer]()
@@ -83,7 +84,7 @@ Name | Type | Description
 conn | Object | The data or media connection.
 <br/>
 
-##### getConnection(peer, type, id)
+##### getConnection(peer, type, id) _-> {Object}_
 > Gets a data or media connection.
 ###### Parameters
 Name | Type | Description
@@ -120,7 +121,7 @@ peer | String | The unique member id.
 msg | JSON String | The stringified JSON object containing the offer (remote description).
 <br/>
 
-##### chat(peer)
+##### chat(peer) _-> {Object}_
 > Creates a DataConnection.
 ###### Parameters
 Name | Type | Description
@@ -128,7 +129,7 @@ Name | Type | Description
 peer | String | The unique member id.
 <br/>
 
-##### call(peer)
+##### call(peer) _-> {Object}_
 > Creates a MediaConnection.
 ###### Parameters
 Name | Type | Description
@@ -171,12 +172,12 @@ conn-track | Object (conn), List of MediaStreams  | Fired when a track has been 
 var dc = instance.chat("remote peer name");
 ```
 #### Methods
-##### channel(channel)
+##### channel(channel) _-> {[RTCDataChannel](https://developer.mozilla.org/en-US/docs/Web/API/RTCDataChannel)}_
 > Gets or sets the current data channel.
 ###### Parameters
 Name | Type | Description
 ---- | ---- | -----------
-channel | [RTCDataChannel](https://developer.mozilla.org/en-US/docs/Web/API/RTCDataChannel) | The data channel.
+channel | RTCDataChannel | The data channel.
 <br/>
 
 ##### setup()
@@ -237,20 +238,20 @@ connectionstatechange | String, Event | Fired when the connectionState of a conn
 var mc = instance.call("remote peer name");
 ```
 #### Methods
-##### audio(sender)
+##### audio(sender) _-> {[AudioTrack](https://developer.mozilla.org/en-US/docs/Web/API/AudioTrack)}_
 > Gets or sets the current audio track.
 ###### Parameters
 Name | Type | Description
 ---- | ---- | -----------
-sender | [AudioTrack](https://developer.mozilla.org/en-US/docs/Web/API/AudioTrack) | The audio track.
+sender | AudioTrack | The audio track.
 <br/>
 
-##### video(sender)
+##### video(sender) _-> {[VideoTrack](https://developer.mozilla.org/en-US/docs/Web/API/VideoTrack)}_
 > Gets or sets the current video track.
 ###### Parameters
 Name | Type | Description
 ---- | ---- | -----------
-sender | [VideoTrack](https://developer.mozilla.org/en-US/docs/Web/API/VideoTrack) | The video track.
+sender | VideoTrack | The video track.
 <br/>
 
 ##### start()
