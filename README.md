@@ -10,39 +10,41 @@ A tasteful, WebRTC library.
   - [getMedia](#getmediatype)
   - [addConnection](#addconnectionconn)
   - [remConnection](#remconnectionconn)
-  - [getConnection]()
-  - [gotCandidate]()
-  - [gotAnswer]()
-  - [gotOffer]()
-  - [chat]()
-  - [call]()
+  - [getConnection](#getconnectionpeer-type-id---object)
+  - [gotCandidate](#gotcandidatepeer-msg)
+  - [gotAnswer](#gotanswerpeer-msg)
+  - [gotOffer](#gotofferpeer-msg)
+  - [chat](#chatpeer---object)
+  - [call](#callpeer---object)
   - [name](#properties)
   - [room](#properties)
   - [store](#properties)
-- [DataConnection]()
-  - [provider]()
-  - [peer]()
-  - [type]()
-  - [id]()
-  - [name]()
-  - [initiator]()
-  - [channel]()
-  - [setup]()
-  - [pc]()
-  - [start/answer]()
-  - [quiet]()
-- [MediaConnection]()
-  - [provider]()
-  - [peer]()
-  - [type]()
-  - [id]()
-  - [name]()
-  - [initiator]()
-  - [pc]()
-  - [audio]()
-  - [video]()
-  - [start/answer]()
-  - [quiet]()
+- [DataConnection](#data-connection)
+  - [channel](#channelchannel---rtcdatachannel)
+  - [setup](#setup)
+  - [start](#start)
+  - [answer](#answer)
+  - [quiet](#quietbool)
+  - [provider](#properties-1)
+  - [peer](#properties-1)
+  - [type](#properties-1)
+  - [id](#properties-1)
+  - [name](#properties-1)
+  - [initiator](#properties-1)
+  - [pc](#properties-1)
+- [MediaConnection](#media-connection)
+  - [audio](#audiosender---audiotrack)
+  - [video](#videosender---videotrack)
+  - [start](#start-1)
+  - [answer](#answer-1)
+  - [quiet](#quietbool-1)
+  - [provider](#properties-2)
+  - [peer](#properties-2)
+  - [type](#properties-2)
+  - [id](#properties-2)
+  - [name](#properties-2)
+  - [initiator](#properties-2)
+  - [pc](#properties-2)
 
 
 ### Instance
@@ -195,7 +197,7 @@ channel | RTCDataChannel | The data channel.
 
 <br/>
 
-##### quiet(bool)
+##### quiet(bool) _-> {Boolean}_
 > Controls event emission.
 ###### Parameters
 Name | Type | Description
@@ -264,7 +266,7 @@ sender | VideoTrack | The video track.
 
 <br/>
 
-##### quiet(bool)
+##### quiet(bool) _-> {Boolean}_
 > Controls event emission.
 ###### Parameters
 Name | Type | Description
