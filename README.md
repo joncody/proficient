@@ -134,6 +134,7 @@ peer | String | The unique member id.
 Name | Type | Description
 ---- | ---- | -----------
 peer | String | The unique member id.
+<br/>
 
 #### Properties
 Name | Type | Description
@@ -199,6 +200,7 @@ channel | [RTCDataChannel](https://developer.mozilla.org/en-US/docs/Web/API/RTCD
 Name | Type | Description
 ---- | ---- | -----------
 bool | Boolean | True for on and false for off.
+<br/>
 
 #### Properties
 Name | Type | Description
@@ -267,6 +269,7 @@ sender | [VideoTrack](https://developer.mozilla.org/en-US/docs/Web/API/VideoTrac
 Name | Type | Description
 ---- | ---- | -----------
 bool | Boolean | True for on and false for off.
+<br/>
 
 #### Properties
 Name | Type | Description
