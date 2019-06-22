@@ -146,23 +146,23 @@ store | Object | The stored connections and media stream.
 #### Events
 Name | Parameters | Description
 ---- | ---------- | -----------
-error | |
-add-candidate | |
-media | |
-conn-open | |
-conn-message | |
-conn-close | |
-conn-error | |
-conn-local-description | |
-conn-remote-description | |
-conn-negotiationneeded | |
-conn-candidate | |
-conn-icecandidateerror | |
-conn-signalingstatechange | |
-conn-iceconnectionstatechange | |
-conn-icegatheringstatechange | |
-conn-connectionstatechange | |
-conn-track | |
+error | String, Event | Fired when getting a media stream fails.
+media | String, MediaStream | Fired when getting a media stream succeeds.
+conn-add-candidate | Object (conn), [RTCICeCandidate](https://developer.mozilla.org/en-US/docs/Web/API/RTCIceCandidate) | Fired when an ice candidate is successfully added.
+conn-open | Object (conn) | Fired when a data connection opens.
+conn-message | Object (conn), ArrayBuffer or String | Fired when a data connection receives a message.
+conn-close | Object (conn) | Fired when a data connection closes.
+conn-error | Object (conn), Event | Fired when a data connection encounters an error.
+conn-local-description | Object (conn) | Fired after a connection sets its local description.
+conn-remote-description | Object (conn) | Fired after a connection sets its remote description.
+conn-negotiationneeded | Object (conn) | Fired when a change has occurred which requires session negotiation.
+conn-candidate | Object (conn), RTCIceCandidate | Fired when receiving a new RTCIceCandidate from a server
+conn-icecandidateerror | Object (conn), Event | Fired when there as an error receiving a new RTCIceCandidate from a server
+conn-signalingstatechange | Object (conn), String, Event | Fired when the signalingState of a connection changes.
+conn-iceconnectionstatechange | Object (conn), String, Event | Fired when the iceConnectionState of a connection changes.
+conn-icegatheringstatechange | Object (conn), String, Event | Fired when the iceGatheringState of a connection changes.
+conn-connectionstatechange | Object (conn), String, Event | Fired when the connectionState of a connection changes.
+conn-track | Object (conn), List of MediaStreams  | Fired when a track has been added to a connection.
 
 <br/>
 
@@ -205,30 +205,30 @@ bool | Boolean | True for on and false for off.
 #### Properties
 Name | Type | Description
 ---- | ---- | -----------
-provider | Instance |
-peer | |
-type | |
-id | |
-name | |
-initiator | |
-pc | |
+provider | Instance | The instance from which this connection was created.
+peer | String | The unique member id.
+type | String | The type of connection: "data"
+id | String | The unique connection id.
+name | String | The unique connection name.
+initiator | Boolean | If a connection initiates an offer then this is true, otherwise false.
+pc | RTCPeerConnection | The wrapped peer connection object.
 
 #### Events
 Name | Parameters | Description
 ---- | ---------- | -----------
-open | |
-message | |
-close | |
-error | |
-local-description | |
-remote-description | |
-negotiationneeded | |
-candidate | |
-icecandidateerror | |
-signalingstatechange | |
-iceconnectionstatechange | |
-icegatheringstatechange | |
-connectionstatechange | |
+open | | Fired when a data connection opens.
+message | ArrayBuffer or String | Fired when a data connection receives a message.
+close | | Fired when a data connection closes.
+error | Event | Fired when a data connection encounters an error.
+local-description | | Fired after a connection sets its local description.
+remote-description | | Fired after a connection sets its remote description.
+negotiationneeded | | Fired when a change has occurred which requires session negotiation.
+candidate | RTCIceCandidate | Fired when receiving a new RTCIceCandidate from a server
+icecandidateerror | Event | Fired when there as an error receiving a new RTCIceCandidate from a server
+signalingstatechange | String, Event | Fired when the signalingState of a connection changes.
+iceconnectionstatechange | String, Event | Fired when the iceConnectionState of a connection changes.
+icegatheringstatechange | String, Event | Fired when the iceGatheringState of a connection changes.
+connectionstatechange | String, Event | Fired when the connectionState of a connection changes.
 
 <br/>
 
@@ -274,26 +274,26 @@ bool | Boolean | True for on and false for off.
 #### Properties
 Name | Type | Description
 ---- | ---- | -----------
-provider | |
-peer | |
-type | |
-id | |
-name | |
-initiator | |
-pc | |
+provider | Instance | The instance from which this connection was created.
+peer | String | The unique member id.
+type | String | The type of connection: "media"
+id | String | The unique connection id.
+name | String | The unique connection name.
+initiator | Boolean | If a connection initiates an offer then this is true, otherwise false.
+pc | RTCPeerConnection | The wrapped peer connection object.
 
 #### Events
 Name | Parameters | Description
 ---- | ---------- | -----------
-track | |
-error | |
-local-description | |
-remote-description | |
-negotiationneeded | |
-candidate | |
-icecandidateerror | |
-signalingstatechange | |
-iceconnectionstatechange | |
-icegatheringstatechange | |
-connectionstatechange | |
+track | List of MediaStreams  | Fired when a track has been added to a connection.
+error | Event | Fired when a data connection encounters an error.
+local-description | | Fired after a connection sets its local description.
+remote-description | | Fired after a connection sets its remote description.
+negotiationneeded | | Fired when a change has occurred which requires session negotiation.
+candidate | RTCIceCandidate | Fired when receiving a new RTCIceCandidate from a server
+icecandidateerror | Event | Fired when there as an error receiving a new RTCIceCandidate from a server
+signalingstatechange | String, Event | Fired when the signalingState of a connection changes.
+iceconnectionstatechange | String, Event | Fired when the iceConnectionState of a connection changes.
+icegatheringstatechange | String, Event | Fired when the iceGatheringState of a connection changes.
+connectionstatechange | String, Event | Fired when the connectionState of a connection changes.
 
