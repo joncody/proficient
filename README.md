@@ -52,15 +52,15 @@ var instance = proficient(name, room);
 ```
 #### Methods
 ##### stream(stream)
-> Gets or sets the current [media stream](https://developer.mozilla.org/en-US/docs/Web/API/MediaStream).
+> Gets or sets the current media stream.
 ###### Parameters
 Name | Type | Description
 ---- | ---- | -----------
-stream | [MediaStream](https://developer.mozilla.org/en-US/docs/Web/API/MediaStream) | The [media stream](https://developer.mozilla.org/en-US/docs/Web/API/MediaStream).
+stream | [MediaStream](https://developer.mozilla.org/en-US/docs/Web/API/MediaStream) | The media stream.
 <br/>
 
 ##### getMedia(type)
-> Gets a [media stream](https://developer.mozilla.org/en-US/docs/Web/API/MediaStream).
+> Gets a media stream.
 ###### Parameters
 Name | Type | Description
 ---- | ---- | -----------
@@ -238,19 +238,19 @@ var mc = instance.call("remote peer name");
 ```
 #### Methods
 ##### audio(sender)
-> Gets or sets the current [audio track](https://developer.mozilla.org/en-US/docs/Web/API/AudioTrack).
+> Gets or sets the current audio track.
 ###### Parameters
 Name | Type | Description
 ---- | ---- | -----------
-sender | [AudioTrack](https://developer.mozilla.org/en-US/docs/Web/API/AudioTrack) | The [audio track](https://developer.mozilla.org/en-US/docs/Web/API/AudioTrack).
+sender | [AudioTrack](https://developer.mozilla.org/en-US/docs/Web/API/AudioTrack) | The audio track.
 <br/>
 
 ##### video(sender)
-> Gets or sets the current [video track](https://developer.mozilla.org/en-US/docs/Web/API/VideoTrack).
+> Gets or sets the current video track.
 ###### Parameters
 Name | Type | Description
 ---- | ---- | -----------
-sender | [VideoTrack](https://developer.mozilla.org/en-US/docs/Web/API/VideoTrack) | The [video track](https://developer.mozilla.org/en-US/docs/Web/API/VideoTrack).
+sender | [VideoTrack](https://developer.mozilla.org/en-US/docs/Web/API/VideoTrack) | The video track.
 <br/>
 
 ##### start()
