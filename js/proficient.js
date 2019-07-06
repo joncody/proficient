@@ -177,7 +177,7 @@
             var stream = mc.provider.stream();
 
             mc.audio = (function () {
-                var audioSender = stream.getAudioTracks().length > 0
+                var audioSender = stream && stream.getAudioTracks().length > 0
                     ? pc.addTrack(stream.getAudioTracks()[0], stream)
                     : null;
 
@@ -189,7 +189,7 @@
                 };
             }());
             mc.video = (function () {
-                var videoSender = stream.getVideoTracks().length > 0
+                var videoSender = stream && stream.getVideoTracks().length > 0
                     ? pc.addTrack(stream.getVideoTracks()[0], stream)
                     : null;
 
