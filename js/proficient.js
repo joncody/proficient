@@ -206,8 +206,8 @@
             if (mc.initiator === true) {
                 mc.start = function () {
                     var offerOptions = {
-                        offerToReceiveAudio: mc.audio() ? 1 : 0,
-                        offerToReceiveVideo: mc.video() ? 1 : 0
+                        offerToReceiveAudio: 1,
+                        offerToReceiveVideo: 1
                     };
 
                     pc.createOffer(offerOptions).then(function (offer) {
