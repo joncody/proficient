@@ -204,11 +204,10 @@
                 mc.emit("track", e, e.streams);
             };
             if (mc.initiator === true) {
-                mc.start = function () {
-                    var offerOptions = {
-                        offerToReceiveAudio: mc.audio() ? 1 : 0,
-                        offerToReceiveVideo: mc.video() ? 1 : 0
-                    };
+                mc.start = function (offeropts) {
+                    var offerOptions = gg.isObject(offeropts)
+                        ? offeropts
+                        : { offerToReceiveAudio: 1, offerToReceiveVideo: 1 };
 
                     pc.createOffer(offerOptions).then(function (offer) {
                         return pc.setLocalDescription(offer);
@@ -376,7 +375,6 @@
             };
 
             function success(stream) {
-                store.stream = stream;
                 pro.emit("media", type, stream);
             }
 
