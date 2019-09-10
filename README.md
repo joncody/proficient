@@ -16,9 +16,9 @@ A tasteful, WebRTC library.
   - [gotOffer](#gotofferpeer-msg)
   - [chat](#chatpeer---object)
   - [call](#callpeer---object)
+  - [purge](#purge)
   - [name](#properties)
   - [room](#properties)
-  - [store](#properties)
 - [DataConnection](#data-connection)
   - [channel](#channelchannel---rtcdatachannel)
   - [setup](#setup)
@@ -139,12 +139,16 @@ Name | Type | Description
 peer | String | The unique member id.
 <br/>
 
+##### purge()
+> Closes and removes all connections.
+
+<br/>
+
 #### Properties
 Name | Type | Description
 ---- | ---- | -----------
 name | String | Username.
 room | String | Room name.
-store | Object | The stored connections and media stream.
 
 #### Events
 Name | Parameters | Description
