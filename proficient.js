@@ -7689,6 +7689,9 @@ if (typeof module === 'object') {
         }
         pro.name = name;
         pro.room = room;
+        pro.connections = function () {
+            return gg.copy(store.connections);
+        };
         pro.stream = function (stream) {
             if (!gg.isUndefined(stream)) {
                 store.stream = stream;
@@ -7798,7 +7801,17 @@ if (typeof module === 'object') {
             pro.addConnection(connection);
             return connection;
         };
-        pro.store = store;
+        pro.purge = function () {
+            gg.each(store.connections, function (typeobj, peer) {
+                gg.each(typeobj, function (idobj, type) {
+                    gg.each(idobj, function (conn, id) {
+                        conn.pc.close();
+                        pro.remConnection(conn);
+                        conn = null;
+                    });
+                });
+            });
+        };
         return Object.freeze(pro);
     }
 
