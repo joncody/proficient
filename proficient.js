@@ -7270,7 +7270,7 @@ if (typeof module === 'object') {
 
     if (!indexedDB) {
         global.console.log("indexedDB was not found and/or supported!");
-        cdb = null;
+        cdb = {};
     }
 
     gg.typeOf = typeOf;
