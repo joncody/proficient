@@ -3,6 +3,8 @@
 import util from "./include/util.js";
 import emitter from "./include/emitter.js";
 
+const global = globalThis || window || this;
+
 const getID = (function () {
     const maxint = Math.pow(2, 53) - 1;
     const ids = {};
