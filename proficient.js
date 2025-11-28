@@ -1,6 +1,6 @@
 "use strict";
 
-import util from "./include/util.js";
+import utils from "./include/utils.js";
 import emitter from "./include/emitter.js";
 
 const global = globalThis || window || this;
@@ -10,7 +10,7 @@ const getID = (function () {
     const ids = {};
 
     return function (peer, type, id) {
-        if (!util.isString(peer) || !(type === "data" || type === "media")) {
+        if (!utils.isString(peer) || !(type === "data" || type === "media")) {
             return;
         }
         if (!ids.hasOwnProperty(peer)) {
@@ -19,7 +19,7 @@ const getID = (function () {
                 data: 0
             };
         }
-        if (util.isNumber(id) && id <= maxint) {
+        if (utils.isNumber(id) && id <= maxint) {
             ids[peer][type] = id;
         } else {
             ids[peer][type] = ids[peer][type] < maxint
@@ -141,7 +141,7 @@ function mediaConnection(provider, peer, options) {
         const oldemit = mc.emit;
 
         return function () {
-            const args = util.toArray(arguments);
+            const args = utils.toArray(arguments);
 
             if (!store.quiet) {
                 oldemit.apply(mc, args);
@@ -151,7 +151,7 @@ function mediaConnection(provider, peer, options) {
             }
         };
     }());
-    options = util.extend({}, options, true);
+    options = utils.extend({}, options, true);
     mc.provider = provider;
     mc.peer = peer;
     mc.type = "media";
@@ -171,7 +171,7 @@ function mediaConnection(provider, peer, options) {
                 : null;
 
             return function (sender) {
-                if (!util.isUndefined(sender)) {
+                if (!utils.isUndefined(sender)) {
                     audioSender = sender;
                 }
                 return audioSender;
@@ -183,7 +183,7 @@ function mediaConnection(provider, peer, options) {
                 : null;
 
             return function (sender) {
-                if (!util.isUndefined(sender)) {
+                if (!utils.isUndefined(sender)) {
                     videoSender = sender;
                 }
                 return videoSender;
@@ -194,7 +194,7 @@ function mediaConnection(provider, peer, options) {
         };
         if (mc.initiator === true) {
             mc.start = function (offeropts) {
-                const offerOptions = util.isObject(offeropts)
+                const offerOptions = utils.isObject(offeropts)
                     ? offeropts
                     : { offerToReceiveAudio: 1, offerToReceiveVideo: 1 };
 
@@ -223,7 +223,7 @@ function mediaConnection(provider, peer, options) {
         return pc;
     }());
     mc.quiet = function (bool) {
-        if (util.isBoolean(bool)) {
+        if (utils.isBoolean(bool)) {
             store.quiet = bool;
         }
         return store.quiet;
@@ -243,7 +243,7 @@ function dataConnection(provider, peer, options) {
         const oldemit = dc.emit;
 
         return function () {
-            const args = util.toArray(arguments);
+            const args = utils.toArray(arguments);
 
             if (!store.quiet) {
                 oldemit.apply(dc, args);
@@ -253,7 +253,7 @@ function dataConnection(provider, peer, options) {
             }
         };
     }());
-    options = util.extend({}, options, true);
+    options = utils.extend({}, options, true);
     dc.provider = provider;
     dc.peer = peer;
     dc.type = "data";
@@ -264,7 +264,7 @@ function dataConnection(provider, peer, options) {
         store.sdp = options.sdp;
     }
     dc.channel = function (channel) {
-        if (!util.isUndefined(channel)) {
+        if (!utils.isUndefined(channel)) {
             store.channel = channel;
         }
         return store.channel;
@@ -331,7 +331,7 @@ function dataConnection(provider, peer, options) {
         return pc;
     }());
     dc.quiet = function (bool) {
-        if (util.isBoolean(bool)) {
+        if (utils.isBoolean(bool)) {
             store.quiet = bool;
         }
         return store.quiet;
@@ -346,16 +346,16 @@ export default function proficient(name, room) {
         stream: null
     };
 
-    if (!name || !util.isString(name) || !room || !util.isString(room)) {
+    if (!name || !utils.isString(name) || !room || !utils.isString(room)) {
         return;
     }
     pro.name = name;
     pro.room = room;
     pro.connections = function () {
-        return util.copy(store.connections);
+        return utils.copy(store.connections);
     };
     pro.stream = function (stream) {
-        if (!util.isUndefined(stream)) {
+        if (!utils.isUndefined(stream)) {
             store.stream = stream;
         }
         return store.stream;
@@ -464,9 +464,9 @@ export default function proficient(name, room) {
         return connection;
     };
     pro.purge = function () {
-        util.each(store.connections, function (typeobj, peer) {
-            util.each(typeobj, function (idobj, type) {
-                util.each(idobj, function (conn, id) {
+        utils.each(store.connections, function (typeobj, peer) {
+            utils.each(typeobj, function (idobj, type) {
+                utils.each(idobj, function (conn, id) {
                     conn.pc.close();
                     pro.remConnection(conn);
                     conn = null;
