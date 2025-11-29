@@ -1,183 +1,191 @@
+# `proficient.js` – Signaling-Agnostic WebRTC
 
-# Proficient
+A powerful, event-driven wrapper for WebRTC peer-to-peer connections.
 
-**Proficient** is a lightweight, event-driven WebRTC library for JavaScript, designed to simplify the creation of **peer-to-peer audio/video calls** and **data channels**.
-
-It supports multiple concurrent connections, handles offer/answer and ICE negotiation internally, and uses a modular design with event emitters.
-
----
-
-## Features
-
-- 📞 Media connections (audio/video) via WebRTC
-- 💬 RTCDataChannel for real-time messaging
-- 🔄 SDP offer/answer and ICE candidate negotiation
-- 🔧 Custom event emitter system
-- 🔁 Manage multiple connections per peer
-- 🧱 Built with native APIs, zero third-party dependencies
+**proficient.js** abstracts the complexity of `RTCPeerConnection`, ICE candidates, and Data Channels. It is **signaling agnostic**, meaning it does not handle the server communication (WebSocket, Socket.io, Firebase, etc.). Instead, it provides simple hooks (`gotOffer`, `gotAnswer`) to feed data in, and events (`local-description`, `candidate`) to send data out.
 
 ---
 
-## Installation
+## ✅ Features
 
-This library is not on npm. To use it:
-
-```bash
-your-project/
-├── include/
-│   ├── emitter.js
-│   └── util.js
-├── proficient.js
-```
+- 📹 **Unified API:** Simple methods for Video/Audio calls and Data chats.
+- 🔌 **Signaling Agnostic:** Works with *any* backend (Socket.io, WebSocket, Firebase, etc.).
+- 🫧 **Event Bubbling:** Connection events bubble up to the main instance for easy management.
+- 🗃️ **Multi-Connection:** Manages multiple concurrent connections per peer.
+- 🔒 **Immutable:** Returns frozen API objects for safety.
+- 📦 **Zero dependencies** (other than the included `utils` and `emitter`), modern ES module.
 
 ---
 
-## Getting Started
+## 📦 Installation
 
-### Import
+Copy `proficient.js` (and dependencies `utils.js`, `emitter.js`) into your project.
+
+Import as a module:
 
 ```js
 import proficient from './proficient.js';
 ```
 
-### Create an Instance
-
-```js
-const pro = proficient('alice', 'room-1');
-```
-
 ---
 
-## Usage
+## 🧠 Quick Examples
 
-### Acquire Media
+### 1. Setup & Media
 
 ```js
-pro.getMedia('both'); // 'audio', 'video', or 'both'
+import proficient from "./proficient.js";
 
-pro.on('media', (type, stream) => {
-  document.querySelector('#local').srcObject = stream;
+// Initialize as "Alice" in "Room1"
+const pro = proficient("Alice", "Room1");
+
+// 1. Get Local Camera/Mic
+pro.getMedia("both"); // or "audio", "video"
+
+pro.on("media", (type, stream) => {
+    // 2. Store the stream (Required before calling!)
+    pro.stream(stream);
+    
+    // Show local video
+    document.querySelector("#localVideo").srcObject = stream;
 });
 ```
 
-### Make a Call
+### 2. Wiring up Signaling (The "Glue")
+
+Since `proficient` doesn't know about your server, you must wire the events.
+*Assume `socket` is your WebSocket connection.*
 
 ```js
-const call = pro.call('bob');
+// --- OUTBOUND: Send signals to your server --- //
 
-call.on('track', (e, streams) => {
-  document.querySelector('#remote').srcObject = streams[0];
+// When WE generate an offer/answer (SDP)
+pro.on("conn-local-description", (conn) => {
+    socket.emit("signal", {
+        target: conn.peer,
+        type: conn.type, // "data" or "media"
+        sdp: conn.pc.localDescription,
+        id: conn.id // Unique ID for this specific connection
+    });
 });
 
-call.start(); // Send SDP offer
-```
-
-### Open a Chat
-
-```js
-const chat = pro.chat('bob');
-
-chat.on('open', () => {
-  chat.channel().send('Hello Bob!');
+// When WE generate an ICE Candidate
+pro.on("conn-candidate", (conn, e, candidate) => {
+    socket.emit("signal", {
+        target: conn.peer,
+        type: conn.type,
+        candidate: candidate,
+        id: conn.id
+    });
 });
 
-chat.on('message', data => {
-  console.log('Message from Bob:', data);
+// --- INBOUND: Feed signals from server into Proficient --- //
+
+socket.on("signal", (msg) => {
+    // msg contains: { sdp, candidate, type, id ... }
+    const strMsg = JSON.stringify(msg); // Proficient expects JSON strings for input
+
+    if (msg.sdp && msg.sdp.type === "offer") {
+        pro.gotOffer(msg.sender, strMsg);
+    } else if (msg.sdp && msg.sdp.type === "answer") {
+        pro.gotAnswer(msg.sender, strMsg);
+    } else if (msg.candidate) {
+        pro.gotCandidate(msg.sender, strMsg);
+    }
 });
-
-chat.start(); // Send SDP offer
 ```
 
----
-
-## Receiving Offers & ICE Candidates
-
-These are typically handled through your signaling server:
+### 3. Making & Receiving Calls
 
 ```js
-// When you receive an offer:
-pro.gotOffer('bob', JSON.stringify({ type: 'media', id: 1, sdp }));
+// --- STARTING A CALL --- //
+// Ensure pro.stream() is set first!
+const call = pro.call("Bob"); 
 
-// When you receive an answer:
-pro.gotAnswer('bob', JSON.stringify({ type: 'media', id: 1, sdp }));
 
-// When you receive a candidate:
-pro.gotCandidate('bob', JSON.stringify({ type: 'media', id: 1, candidate }));
+// --- RECEIVING A CALL --- //
+pro.on("call", (conn) => {
+    console.log("Incoming call from:", conn.peer);
+    
+    // Accept the call
+    conn.answer();
+    
+    // Handle remote video
+    conn.on("track", (e) => {
+         document.querySelector("#remoteVideo").srcObject = e.streams[0];
+    });
+});
 ```
 
 ---
 
-## API
+## 📚 API Reference
 
-### Instance
+### 🟢 Initialization
 
-```js
-const pro = proficient(name, room);
-```
+| Function | Description |
+|----------|-------------|
+| `proficient(name, room)` | Creates a new instance. `name` is the local user ID, `room` is the context. |
 
-#### Methods
+### 📹 Media & Management
 
-| Method                        | Description                              |
-|------------------------------|------------------------------------------|
-| `getMedia(type)`             | Request local media (`audio`, `video`, `both`) |
-| `call(peer)`                 | Create a media connection                |
-| `chat(peer)`                 | Create a data channel connection         |
-| `gotOffer(peer, msg)`        | Handle incoming SDP offer                |
-| `gotAnswer(peer, msg)`       | Handle incoming SDP answer               |
-| `gotCandidate(peer, msg)`    | Handle incoming ICE candidate            |
-| `addConnection(conn)`        | Manually add a connection (internal)     |
-| `remConnection(conn)`        | Remove an existing connection            |
-| `getConnection(peer, type, id)` | Retrieve a specific connection         |
-| `purge()`                    | Close and remove all connections         |
+| Function | Description |
+|----------|-------------|
+| `pro.getMedia(type)` | Requests user permissions. `type`: `"audio"`, `"video"`, or `"both"`. Emits `media` on success. |
+| `pro.stream([stream])` | Get or Set the local media stream. **Must be set before calling `pro.call`**. |
+| `pro.connections()` | Returns a copy of all active connections. |
+| `pro.purge()` | Closes all active connections and cleans up. |
 
-#### Properties
+### 📞 Connection Methods
 
-| Property       | Description                     |
-|----------------|---------------------------------|
-| `name`         | The local username              |
-| `room`         | The current room name           |
-| `stream()`     | Get/set local media stream      |
-| `connections()`| Return a snapshot of all connections |
+| Function | Description |
+|----------|-------------|
+| `pro.call(peerId)` | Initiates a **Media** connection (Audio/Video). Returns the connection object. |
+| `pro.chat(peerId)` | Initiates a **Data** connection (Text/Binary). Returns the connection object. |
 
----
+### 📡 Inbound Signaling Hooks
 
-## Events
+Use these methods to feed data received from your signaling server into `proficient`.
 
-Events are emitted at two levels:
-
-- **Instance events** (e.g. `pro.on('call', ...)`)
-- **Connection events** (prefixed internally with `conn-`)
-
-| Event                     | From         | Description                         |
-|---------------------------|--------------|-------------------------------------|
-| `media`                   | instance     | Fired when local media is acquired |
-| `call`                    | instance     | Fired when a remote peer calls     |
-| `chat`                    | instance     | Fired when a remote peer starts chat |
-| `conn-open`               | data conn    | Data channel opened                 |
-| `conn-message`            | data conn    | Message received on data channel   |
-| `conn-close`              | data conn    | Data channel closed                 |
-| `conn-error`              | all conns    | Generic connection error            |
-| `conn-track`              | media conn   | Media track received                |
-| `conn-local-description`  | all conns    | Local SDP set                       |
-| `conn-remote-description` | all conns    | Remote SDP set                      |
-| `conn-candidate`          | all conns    | ICE candidate gathered              |
-| `conn-icecandidateerror`  | all conns    | ICE error                           |
-| `conn-signalingstatechange` | all conns  | Signaling state changed             |
-| `conn-iceconnectionstatechange` | all conns | ICE connection state changed     |
-| `conn-icegatheringstatechange` | all conns | ICE gathering state changed      |
-| `conn-connectionstatechange` | all conns | Peer connection state changed      |
+| Function | Description |
+|----------|-------------|
+| `pro.gotOffer(peer, jsonString)` | Call this when you receive an SDP Offer. |
+| `pro.gotAnswer(peer, jsonString)` | Call this when you receive an SDP Answer. |
+| `pro.gotCandidate(peer, jsonString)` | Call this when you receive an ICE Candidate. |
 
 ---
 
-## Advanced Notes
+## ⚡ Events
 
-- Connections are internally tracked by peer + type (`data` / `media`) + ID.
-- You can have multiple connections per peer of the same type.
-- Local and remote SDP management is handled internally but can be overridden if needed.
-- Use `.quiet(true)` on a connection to suppress event emission.
+Events can be listened to on the main instance (`pro`) or specific connection objects.
+
+### Main Instance Events
+
+| Event | Arguments | Description |
+|-------|-----------|-------------|
+| `media` | `(type, stream)` | Fired when `getMedia` succeeds. |
+| `call` | `(connection)` | Fired when receiving an incoming Media connection (Offer). |
+| `chat` | `(connection)` | Fired when receiving an incoming Data connection (Offer). |
+| `error` | `(type, err)` | Fired on errors. |
+
+### Connection Events (Bubbled)
+
+These events are emitted by connection objects, but bubble up to the main `pro` instance with the prefix `conn-`.
+
+*Listener format:* `pro.on('conn-eventname', (connection, arg1, arg2) => { ... })`
+
+| Event Suffix | Args (after `conn`) | Description |
+|--------------|-------------------|-------------|
+| `local-description` | *(none)* | SDP Offer/Answer created. Send `conn.pc.localDescription` to peer. |
+| `remote-description` | *(none)* | Remote SDP received and set successfully. |
+| `candidate` | `(e, candidate)` | New ICE candidate generated. Send to peer. |
+| `track` | `(e, streams)` | **(Media Only)** Remote media track received. |
+| `open` | *(none)* | **(Data Only)** Data Channel is open and ready. |
+| `message` | `(data)` | **(Data Only)** Data received (ArrayBuffer). |
+| `close` | *(none)* | Connection closed. |
 
 ---
 
-## License
+## 📄 License
 
-See [`LICENSE`](./LICENSE)
+See the [LICENSE](./LICENSE) file for details.
