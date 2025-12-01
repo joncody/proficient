@@ -3,7 +3,7 @@
 import utils from "./include/utils.js";
 import emitter from "./include/emitter.js";
 
-const global = globalThis || window || this;
+const global = typeof globalThis !== "undefined" ? globalThis : (typeof window !== "undefined" ? window : this);
 
 const getID = (function () {
     const maxint = Math.pow(2, 53) - 1;
